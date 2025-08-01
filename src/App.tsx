@@ -7,7 +7,7 @@ import { MusicalScore } from './components/MusicalScore';
 import { Controls } from './components/Controls';
 import { noteMapping as defaultNoteMapping, getNote } from './utils/noteMapping';
 import { sampleSongs } from './data/sampleSongs';
-import { Volume2, Music, Metronome } from 'lucide-react';
+import { Volume2, Music, ChromeIcon as Metronome } from 'lucide-react';
 
 interface KeyboardMapping {
   [key: string]: { note: string; octave: number };
