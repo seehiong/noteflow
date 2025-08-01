@@ -272,98 +272,95 @@ function App() {
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
           {/* Left Column - Controls and Songs */}
           <div className="space-y-4">
-            {/* Volume Control */}
-            <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-4">
-              <label className="block text-sm font-medium text-purple-300 mb-2">
-                <div className="flex items-center gap-2">
-                  <Volume2 className="w-4 h-4" />
-                  Volume: {Math.round(volume * 100)}%
+            {/* Compact Controls */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-3">
+              <div className="grid grid-cols-2 gap-3">
+                {/* Volume Control */}
+                <div>
+                  <label className="block text-xs font-medium text-purple-300 mb-1">
+                    <div className="flex items-center gap-1">
+                      <Volume2 className="w-3 h-3" />
+                      Vol: {Math.round(volume * 100)}%
+                    </div>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={volume}
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                  />
                 </div>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={volume}
-                onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-              />
-            </div>
 
-            {/* Metronome Control */}
-            <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-purple-300 flex items-center gap-2">
-                  <Metronome className="w-4 h-4" />
-                  Metronome {isPlaying && isMetronomeOn ? '(Synced)' : ''}
-                </label>
-                <button
-                  onClick={() => setIsMetronomeOn(!isMetronomeOn)}
-                  className={`
-                    px-3 py-1 rounded-lg font-medium transition-all duration-200 text-sm
-                    ${isMetronomeOn 
-                      ? 'bg-green-600 hover:bg-green-700 text-white' 
-                      : 'bg-slate-600 hover:bg-slate-500 text-slate-200'
-                    }
-                  `}
-                >
-                  {isMetronomeOn ? 'ON' : 'OFF'}
-                </button>
-              </div>
-              
-              <div className="mb-2">
-                <label className="block text-xs text-purple-300 mb-1">
-                  BPM: {metronomeBPM}
+                {/* Metronome Control */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-medium text-purple-300 flex items-center gap-1">
+                      <Metronome className="w-3 h-3" />
+                      {metronomeBPM} BPM
+                    </label>
+                    <button
+                      onClick={() => setIsMetronomeOn(!isMetronomeOn)}
+                      className={`
+                        px-2 py-0.5 rounded text-xs font-medium transition-all duration-200
+                        ${isMetronomeOn 
+                          ? 'bg-green-600 hover:bg-green-700 text-white' 
+                          : 'bg-slate-600 hover:bg-slate-500 text-slate-200'
+                        }
+                      `}
+                    >
+                      {isMetronomeOn ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min="40"
+                    max="240"
+                    step="5"
+                    value={metronomeBPM}
+                    onChange={(e) => setMetronomeBPM(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                    disabled={!isMetronomeOn || isPlaying}
+                  />
                   {isPlaying && isMetronomeOn && (
-                    <span className="ml-2 text-green-400 text-xs">• Synced to song</span>
+                    <div className="text-xs text-green-400 mt-0.5">Synced</div>
                   )}
-                </label>
-                <input
-                  type="range"
-                  min="40"
-                  max="240"
-                  step="5"
-                  value={metronomeBPM}
-                  onChange={(e) => setMetronomeBPM(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                  disabled={!isMetronomeOn || isPlaying}
-                />
-                <div className="flex justify-between text-xs text-purple-400 mt-1">
-                  <span>Slow (40)</span>
-                  <span>Fast (240)</span>
                 </div>
               </div>
             </div>
 
             {/* Sample Songs */}
-            <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-xl p-4">
-              <h3 className="text-lg font-semibold text-white mb-3 text-center">Sample Songs</h3>
+            <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-xl p-3 flex-1 min-h-0">
+              <h3 className="text-sm font-semibold text-white mb-2 text-center">Sample Songs</h3>
               
-              <div className="space-y-2">
+              <div className="space-y-1.5 max-h-full overflow-y-auto">
                 {Object.keys(sampleSongs).map(songName => (
                   <button
                     key={songName}
                     onClick={() => handleSongSelect(songName)}
                     className={`
-                      w-full p-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-3
+                      w-full p-2 rounded-lg font-medium transition-all duration-200 text-sm
                       ${currentSong === songName
                         ? 'bg-emerald-600 text-white shadow-lg'
                         : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                       }
                     `}
                   >
-                    <span className="capitalize text-sm">{songName.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <span className="capitalize">{songName.replace(/([A-Z])/g, ' $1').trim()}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Keyboard Settings */}
-            <KeyboardSettings 
-              mapping={keyboardMapping}
-              onMappingChange={setKeyboardMapping}
-            />
+            <div className="mt-auto">
+              <KeyboardSettings 
+                mapping={keyboardMapping}
+                onMappingChange={setKeyboardMapping}
+              />
+            </div>
           </div>
 
           {/* Middle Column - Musical Score */}
