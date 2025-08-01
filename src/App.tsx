@@ -175,14 +175,8 @@ function App() {
     setIsPlaying(true);
     setCurrentNoteIndex(0);
     
-    // Calculate song BPM based on note durations (assuming quarter note = 1 beat)
-    const averageDuration = song.durations.reduce((sum, dur) => sum + dur, 0) / song.durations.length;
-    const songBPM = Math.round(60 / (averageDuration * 0.5)); // Convert duration to BPM
-    
-    // Sync metronome with song tempo
-    if (isMetronomeOn) {
-      setMetronomeBPM(Math.max(40, Math.min(240, songBPM))); // Clamp to valid range
-    }
+    // Use metronome BPM for song tempo (quarter note = 1 beat)
+    const beatDuration = (60 / metronomeBPM) * 1000; // Convert BPM to milliseconds per beat
     
     let noteIndex = 0;
     
@@ -196,7 +190,7 @@ function App() {
       
       setCurrentNoteIndex(noteIndex);
       const note = song.notes[noteIndex];
-      const duration = song.durations[noteIndex] * 500; // Convert to ms
+      const duration = song.durations[noteIndex] * beatDuration; // Use metronome-based timing
       
       // Only play automatic song notes when not in practice mode
       if (note !== 'rest' && !isMuted && !isPracticeMode) {
@@ -209,7 +203,7 @@ function App() {
     };
     
     playNextNote();
-  }, [playNote, stopNote, isMuted, isPracticeMode, isMetronomeOn]);
+  }, [playNote, stopNote, isMuted, isPracticeMode, metronomeBPM]);
 
   const handleTogglePlay = () => {
     if (isPlaying) {
@@ -322,10 +316,12 @@ function App() {
                     value={metronomeBPM}
                     onChange={(e) => setMetronomeBPM(parseInt(e.target.value))}
                     className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                    disabled={!isMetronomeOn || isPlaying}
+                    disabled={!isMetronomeOn}
                   />
-                  {isPlaying && isMetronomeOn && (
-                    <div className="text-xs text-green-400 mt-0.5">Synced</div>
+                  {isMetronomeOn && (
+                    <div className="text-xs text-green-400 mt-0.5">
+                      {isPlaying ? "• Synced to song" : "• Ready"}
+                    </div>
                   )}
                 </div>
               </div>
