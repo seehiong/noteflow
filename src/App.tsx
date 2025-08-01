@@ -174,6 +174,16 @@ function App() {
   const playSong = useCallback((song: { notes: string[]; durations: number[] }) => {
     setIsPlaying(true);
     setCurrentNoteIndex(0);
+    
+    // Calculate song BPM based on note durations (assuming quarter note = 1 beat)
+    const averageDuration = song.durations.reduce((sum, dur) => sum + dur, 0) / song.durations.length;
+    const songBPM = Math.round(60 / (averageDuration * 0.5)); // Convert duration to BPM
+    
+    // Sync metronome with song tempo
+    if (isMetronomeOn) {
+      setMetronomeBPM(Math.max(40, Math.min(240, songBPM))); // Clamp to valid range
+    }
+    
     let noteIndex = 0;
     
     const playNextNote = () => {
@@ -199,7 +209,7 @@ function App() {
     };
     
     playNextNote();
-  }, [playNote, stopNote, isMuted, isPracticeMode]);
+  }, [playNote, stopNote, isMuted, isPracticeMode, isMetronomeOn]);
 
   const handleTogglePlay = () => {
     if (isPlaying) {
@@ -286,7 +296,7 @@ function App() {
               <div className="flex items-center justify-between mb-3">
                 <label className="text-sm font-medium text-purple-300 flex items-center gap-2">
                   <Metronome className="w-4 h-4" />
-                  Metronome
+                  Metronome {isPlaying && isMetronomeOn ? '(Synced)' : ''}
                 </label>
                 <button
                   onClick={() => setIsMetronomeOn(!isMetronomeOn)}
@@ -305,6 +315,9 @@ function App() {
               <div className="mb-2">
                 <label className="block text-xs text-purple-300 mb-1">
                   BPM: {metronomeBPM}
+                  {isPlaying && isMetronomeOn && (
+                    <span className="ml-2 text-green-400 text-xs">• Synced to song</span>
+                  )}
                 </label>
                 <input
                   type="range"
@@ -314,7 +327,7 @@ function App() {
                   value={metronomeBPM}
                   onChange={(e) => setMetronomeBPM(parseInt(e.target.value))}
                   className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                  disabled={!isMetronomeOn}
+                  disabled={!isMetronomeOn || isPlaying}
                 />
                 <div className="flex justify-between text-xs text-purple-400 mt-1">
                   <span>Slow (40)</span>
