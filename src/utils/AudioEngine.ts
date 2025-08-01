@@ -2,6 +2,8 @@ export class AudioEngine {
   private audioContext: AudioContext;
   private oscillators: Map<string, OscillatorNode>;
   private gainNodes: Map<string, GainNode>;
+  private metronomeIntervalId: NodeJS.Timeout | null = null;
+  private metronomeGainNode: GainNode | null = null;
 
   constructor() {
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -36,6 +38,51 @@ export class AudioEngine {
     const octaveMultiplier = Math.pow(2, octave - 4);
     
     return baseFreq * octaveMultiplier;
+  }
+
+  private playMetronomeClick(): void {
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+
+    // High-pitched click sound
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+
+    // Quick attack and decay for a sharp click
+    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+
+    oscillator.start(this.audioContext.currentTime);
+    oscillator.stop(this.audioContext.currentTime + 0.1);
+  }
+
+  startMetronome(bpm: number): void {
+    this.stopMetronome(); // Stop any existing metronome
+    
+    const interval = (60 / bpm) * 1000; // Convert BPM to milliseconds
+    
+    const scheduleNextBeat = () => {
+      this.playMetronomeClick();
+      this.metronomeIntervalId = setTimeout(scheduleNextBeat, interval);
+    };
+    
+    // Start immediately
+    scheduleNextBeat();
+  }
+
+  stopMetronome(): void {
+    if (this.metronomeIntervalId) {
+      clearTimeout(this.metronomeIntervalId);
+      this.metronomeIntervalId = null;
+    }
   }
 
   playNote(note: string, volume: number = 0.7, duration?: number): void {
@@ -86,6 +133,7 @@ export class AudioEngine {
   }
 
   dispose(): void {
+    this.stopMetronome();
     this.oscillators.forEach((oscillator) => {
       try {
         oscillator.stop();

@@ -7,7 +7,7 @@ import { MusicalScore } from './components/MusicalScore';
 import { Controls } from './components/Controls';
 import { noteMapping as defaultNoteMapping, getNote } from './utils/noteMapping';
 import { sampleSongs } from './data/sampleSongs';
-import { Volume2, Music } from 'lucide-react';
+import { Volume2, Music, Metronome } from 'lucide-react';
 
 interface KeyboardMapping {
   [key: string]: { note: string; octave: number };
@@ -23,6 +23,8 @@ function App() {
   const [currentNoteIndex, setCurrentNoteIndex] = useState(0);
   const [isPracticeMode, setIsPracticeMode] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [isMetronomeOn, setIsMetronomeOn] = useState(false);
+  const [metronomeBPM, setMetronomeBPM] = useState(120);
   const [keyboardMapping, setKeyboardMapping] = useState<KeyboardMapping>(() => {
     // Initialize with default mapping
     const mapping: KeyboardMapping = {};
@@ -46,6 +48,21 @@ function App() {
   const audioEngineRef = useRef<AudioEngine | null>(null);
   const pressedKeys = useRef<Set<string>>(new Set());
   const songTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Metronome effect
+  useEffect(() => {
+    if (!audioEngineRef.current) return;
+    
+    if (isMetronomeOn) {
+      audioEngineRef.current.startMetronome(metronomeBPM);
+    } else {
+      audioEngineRef.current.stopMetronome();
+    }
+    
+    return () => {
+      audioEngineRef.current?.stopMetronome();
+    };
+  }, [isMetronomeOn, metronomeBPM]);
 
   useEffect(() => {
     audioEngineRef.current = new AudioEngine();
@@ -262,6 +279,48 @@ function App() {
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
                 className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
               />
+            </div>
+
+            {/* Metronome Control */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-purple-300 flex items-center gap-2">
+                  <Metronome className="w-4 h-4" />
+                  Metronome
+                </label>
+                <button
+                  onClick={() => setIsMetronomeOn(!isMetronomeOn)}
+                  className={`
+                    px-3 py-1 rounded-lg font-medium transition-all duration-200 text-sm
+                    ${isMetronomeOn 
+                      ? 'bg-green-600 hover:bg-green-700 text-white' 
+                      : 'bg-slate-600 hover:bg-slate-500 text-slate-200'
+                    }
+                  `}
+                >
+                  {isMetronomeOn ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              
+              <div className="mb-2">
+                <label className="block text-xs text-purple-300 mb-1">
+                  BPM: {metronomeBPM}
+                </label>
+                <input
+                  type="range"
+                  min="40"
+                  max="240"
+                  step="5"
+                  value={metronomeBPM}
+                  onChange={(e) => setMetronomeBPM(parseInt(e.target.value))}
+                  className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                  disabled={!isMetronomeOn}
+                />
+                <div className="flex justify-between text-xs text-purple-400 mt-1">
+                  <span>Slow (40)</span>
+                  <span>Fast (240)</span>
+                </div>
+              </div>
             </div>
 
             {/* Sample Songs */}
