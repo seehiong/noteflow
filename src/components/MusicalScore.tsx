@@ -182,10 +182,13 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
               ))}
               {/* Treble clef */}
               <text x="10" y="55" fontSize="36" fill="#e5e7eb">𝄞</text>
+              {/* Time signature */}
+              <text x="60" y="45" fontSize="20" fill="#e5e7eb" fontWeight="bold">4</text>
+              <text x="60" y="65" fontSize="20" fill="#e5e7eb" fontWeight="bold">4</text>
             </svg>
 
             {/* Notes */}
-            <div className="flex gap-3 ml-12 pt-1 relative">
+            <div className="flex gap-3 ml-20 pt-1 relative">
               {songData.notes.map((note, index) => {
                 const isCurrentNote = index === currentNoteIndex;
                 const isPastNote = index < currentNoteIndex;
