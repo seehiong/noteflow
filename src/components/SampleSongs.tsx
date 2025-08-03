@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Square } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { sampleSongs } from '../data/sampleSongs';
 
 interface SampleSongsProps {
@@ -8,10 +8,9 @@ interface SampleSongsProps {
   setCurrentSong: (songName: string) => void;
 }
 
-export const SampleSongs: React.FC<SampleSongsProps> = ({ 
-  onPlaySong, 
-  currentSong, 
-  setCurrentSong
+export const SampleSongs: React.FC<SampleSongsProps> = ({
+  onPlaySong,
+  currentSong,
 }) => {
   const handleSelectSong = (songName: string) => {
     onPlaySong(songName);
@@ -20,7 +19,7 @@ export const SampleSongs: React.FC<SampleSongsProps> = ({
   return (
     <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-xl p-6">
       <h3 className="text-xl font-semibold text-white mb-4 text-center">Sample Songs</h3>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {Object.keys(sampleSongs).map(songName => (
           <button
@@ -39,7 +38,7 @@ export const SampleSongs: React.FC<SampleSongsProps> = ({
           </button>
         ))}
       </div>
-      
+
       <div className="mt-4 text-center text-emerald-200 text-sm">
         Select a song to see its musical score, then use Play/Practice mode
       </div>

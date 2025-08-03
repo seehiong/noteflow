@@ -22,7 +22,6 @@ interface MusicalScoreProps {
 }
 
 export const MusicalScore: React.FC<MusicalScoreProps> = ({
-  currentSong,
   isPlaying,
   isMuted,
   isPracticeMode,
@@ -44,14 +43,14 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
     if (autoScroll && currentNoteRef.current && notesContainerRef.current) {
       const container = notesContainerRef.current;
       const currentNote = currentNoteRef.current;
-      
+
       const containerWidth = container.clientWidth;
       const noteOffsetLeft = currentNote.offsetLeft;
       const noteWidth = currentNote.clientWidth;
-      
+
       // Calculate scroll position to center the current note
       const scrollLeft = noteOffsetLeft - (containerWidth / 2) + (noteWidth / 2);
-      
+
       container.scrollTo({
         left: scrollLeft,
         behavior: 'smooth'
@@ -87,15 +86,15 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
       <div className="text-center mb-4">
         <h3 className="text-xl font-semibold text-white mb-1">Musical Score</h3>
         <h4 className="text-lg text-purple-200 mb-3">{songData.title}</h4>
-        
+
         {/* Controls */}
         <div className="flex justify-center gap-3 mb-4">
           <button
             onClick={onTogglePlay}
             className={`
               flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm
-              ${isPlaying 
-                ? 'bg-red-600 hover:bg-red-700 text-white' 
+              ${isPlaying
+                ? 'bg-red-600 hover:bg-red-700 text-white'
                 : 'bg-green-600 hover:bg-green-700 text-white'
               }
             `}
@@ -103,13 +102,13 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
             {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             {isPlaying ? 'Stop' : 'Play'}
           </button>
-          
+
           <button
             onClick={onToggleMute}
             className={`
               flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm
-              ${isMuted 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+              ${isMuted
+                ? 'bg-orange-600 hover:bg-orange-700 text-white'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
               }
             `}
@@ -117,13 +116,13 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             {isMuted ? 'Practice Mode' : 'Listen Mode'}
           </button>
-          
+
           <button
             onClick={() => setAutoScroll(!autoScroll)}
             className={`
               flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm
-              ${autoScroll 
-                ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+              ${autoScroll
+                ? 'bg-purple-600 hover:bg-purple-700 text-white'
                 : 'bg-gray-600 hover:bg-gray-700 text-white'
               }
             `}
@@ -136,14 +135,14 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
         {isMuted && (
           <div className="bg-orange-900/30 rounded-lg p-2 mb-3">
             <p className="text-orange-200 text-xs">
-              {isPracticeMode 
+              {isPracticeMode
                 ? `🎯 Practice Mode: Play the highlighted note "${getNoteDisplay(songData.notes[currentNoteIndex])}" to continue!`
                 : '🎯 Practice Mode: Select a song and toggle to practice mode to begin interactive learning!'
               }
             </p>
           </div>
         )}
-        
+
         {isPracticeMode && currentNoteIndex >= songData.notes.length && (
           <div className="bg-green-900/30 rounded-lg p-3 mb-3">
             <p className="text-green-200 font-semibold text-center">
@@ -160,7 +159,7 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
       </div>
 
       {/* Musical Staff */}
-      <div 
+      <div
         ref={notesContainerRef}
         className="bg-white/10 rounded-lg p-4 overflow-x-auto flex-1 scroll-smooth"
       >
@@ -194,7 +193,7 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
                 const isPastNote = index < currentNoteIndex;
                 const isRest = note === 'rest';
                 const isWaitingNote = isPracticeMode && isCurrentNote;
-                
+
                 return (
                   <div
                     ref={isCurrentNote ? currentNoteRef : null}
@@ -210,11 +209,11 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
                       onClick={isWaitingNote ? onShowHint : undefined}
                       className={`
                         text-3xl font-bold transition-all duration-300 mb-1 ${isWaitingNote ? 'cursor-pointer hover:scale-110' : ''}
-                        ${isCurrentNote 
-                          ? isPracticeMode 
-                            ? 'text-red-400 animate-pulse shadow-lg' 
+                        ${isCurrentNote
+                          ? isPracticeMode
+                            ? 'text-red-400 animate-pulse shadow-lg'
                             : 'text-yellow-400 animate-pulse'
-                          : isPastNote 
+                          : isPastNote
                             ? 'text-green-400'
                             : 'text-white'
                         }
@@ -225,24 +224,24 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
                     >
                       {getNoteDuration(songData.durations[index])}
                     </div>
-                    
+
                     {/* Note name */}
                     <div
                       className={`
                         text-sm font-medium px-2 py-1 rounded transition-all duration-300
-                        ${isCurrentNote 
-                          ? isPracticeMode 
-                            ? 'bg-red-500 text-white animate-pulse' 
+                        ${isCurrentNote
+                          ? isPracticeMode
+                            ? 'bg-red-500 text-white animate-pulse'
                             : 'bg-yellow-500 text-black'
-                          : isPastNote 
-                            ? 'bg-green-500 text-white' 
+                          : isPastNote
+                            ? 'bg-green-500 text-white'
                             : 'bg-gray-700 text-white'
                         }
                       `}
                     >
                       {getNoteDisplay(note)}
                     </div>
-                    
+
                     {/* Beat indicator */}
                     <div className="text-xs text-purple-300">
                       {songData.durations[index]}
@@ -277,11 +276,10 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
         </div>
         <div className="w-full bg-gray-700 rounded-full h-2">
           <div
-            className={`h-2 rounded-full transition-all duration-300 ${
-              isPracticeMode 
-                ? 'bg-gradient-to-r from-red-500 to-orange-500' 
+            className={`h-2 rounded-full transition-all duration-300 ${isPracticeMode
+                ? 'bg-gradient-to-r from-red-500 to-orange-500'
                 : 'bg-gradient-to-r from-purple-500 to-pink-500'
-            }`}
+              }`}
             style={{ width: `${(currentNoteIndex / songData.notes.length) * 100}%` }}
           />
         </div>
@@ -301,9 +299,9 @@ const getVerticalPosition = (note: string): string => {
     'A': 22,  // Third line
     'B': 15,  // Between top lines
   };
-  
+
   const noteName = note.replace(/[#b]\d+|\d+/g, '');
   const position = notePositions[noteName] || 30;
-  
+
   return `${position}px`;
 };

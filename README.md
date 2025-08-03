@@ -1,4 +1,4 @@
-# MIDI Keyboard Player with Computer Key Mapping
+# NoteFlow - MIDI Keyboard Player with Computer Key Mapping
 
 A beautiful, interactive web-based piano application that lets you play music using your computer keyboard or mouse. Perfect for learning piano, practicing songs, and exploring musical creativity.
 
@@ -54,8 +54,8 @@ A beautiful, interactive web-based piano application that lets you play music us
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd midi-keyboard-player
+   git clone https://github.com/seehiong/noteflow
+   cd noteflow
    ```
 
 2. **Install dependencies**

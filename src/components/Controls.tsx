@@ -22,11 +22,10 @@ export const Controls: React.FC<ControlsProps> = ({ octave, setOctave, volume, s
               <button
                 key={oct}
                 onClick={() => setOctave(oct)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  octave === oct
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${octave === oct
                     ? 'bg-purple-600 text-white shadow-lg scale-105'
                     : 'bg-slate-600 text-slate-200 hover:bg-slate-500'
-                }`}
+                  }`}
               >
                 {oct}
               </button>

@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Piano } from './components/Piano';
 import { AudioEngine } from './utils/AudioEngine';
 import { KeyboardSettings } from './components/KeyboardSettings';
-import { SampleSongs } from './components/SampleSongs';
 import { MusicalScore } from './components/MusicalScore';
-import { Controls } from './components/Controls';
-import { noteMapping as defaultNoteMapping, getNote } from './utils/noteMapping';
+import { noteMapping as defaultNoteMapping } from './utils/noteMapping';
 import { sampleSongs } from './data/sampleSongs';
 import { Volume2, Music, ChromeIcon as Metronome } from 'lucide-react';
 
@@ -32,33 +30,33 @@ function App() {
       const qwertyKeys = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i'];
       const asdfKeys = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k'];
       const zxcvKeys = ['z', 'x', 'c', 'v', 'b', 'n', 'm', ','];
-      
+
       let baseOctave = 3;
       if (asdfKeys.includes(key)) baseOctave = 4;
       if (zxcvKeys.includes(key)) baseOctave = 5;
-      
+
       // Handle octave completion notes
       const isOctaveCompletion = ['i', 'k', ','].includes(key);
       const finalOctave = isOctaveCompletion ? baseOctave + 1 : baseOctave;
-      
+
       mapping[key] = { note, octave: finalOctave };
     });
     return mapping;
   });
   const audioEngineRef = useRef<AudioEngine | null>(null);
   const pressedKeys = useRef<Set<string>>(new Set());
-  const songTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const songTimeoutRef = useRef<number | null>(null);
 
   // Metronome effect
   useEffect(() => {
     if (!audioEngineRef.current) return;
-    
+
     if (isMetronomeOn) {
       audioEngineRef.current.startMetronome(metronomeBPM);
     } else {
       audioEngineRef.current.stopMetronome();
     }
-    
+
     return () => {
       audioEngineRef.current?.stopMetronome();
     };
@@ -73,14 +71,14 @@ function App() {
 
   const playNote = useCallback((note: string, duration?: number) => {
     if (!audioEngineRef.current) return;
-    
+
     // In practice mode, check if this is the correct note
     if (isPracticeMode && currentSong && sampleSongs[currentSong]) {
       const expectedNote = sampleSongs[currentSong].notes[currentNoteIndex];
       // Extract note name without octave for comparison
       const playedNoteName = note.replace(/\d+$/, ''); // Remove octave number
       const expectedNoteName = expectedNote.replace(/\d+$/, ''); // Remove octave number
-      
+
       if (playedNoteName === expectedNoteName || expectedNote === 'rest') {
         // Correct note! Advance to next note
         setCurrentNoteIndex(prev => {
@@ -94,13 +92,13 @@ function App() {
         });
       }
     }
-    
+
     // Always play user input notes, but mute automatic song playback
     if (!isMuted || !duration) { // Play user input notes even in practice mode
       audioEngineRef.current.playNote(note, volume, duration);
     }
     setActiveNotes(prev => new Set([...prev, note]));
-    
+
     if (!duration) {
       setTimeout(() => {
         setActiveNotes(prev => {
@@ -114,7 +112,7 @@ function App() {
 
   const stopNote = useCallback((note: string) => {
     if (!audioEngineRef.current) return;
-    
+
     audioEngineRef.current.stopNote(note);
     setActiveNotes(prev => {
       const newSet = new Set(prev);
@@ -125,38 +123,38 @@ function App() {
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (pressedKeys.current.has(event.key.toLowerCase()) || event.repeat) return;
-    
+
     pressedKeys.current.add(event.key.toLowerCase());
-    
+
     const mapping = keyboardMapping[event.key.toLowerCase()];
     if (mapping) {
       let note = `${mapping.note}${mapping.octave}`;
-      
+
       // Handle sharps and flats
       if (event.shiftKey && !['E', 'B'].includes(mapping.note)) {
         note = `${mapping.note}#${mapping.octave}`;
       } else if (event.ctrlKey && !['C', 'F'].includes(mapping.note)) {
         note = `${mapping.note}b${mapping.octave}`;
       }
-      
+
       playNote(note);
     }
-  }, [octave, playNote]);
+  }, [octave, playNote, keyboardMapping]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     pressedKeys.current.delete(event.key.toLowerCase());
-    
+
     const mapping = keyboardMapping[event.key.toLowerCase()];
     if (mapping) {
       let note = `${mapping.note}${mapping.octave}`;
-      
+
       // Handle sharps and flats
       if (event.shiftKey && !['E', 'B'].includes(mapping.note)) {
         note = `${mapping.note}#${mapping.octave}`;
       } else if (event.ctrlKey && !['C', 'F'].includes(mapping.note)) {
         note = `${mapping.note}b${mapping.octave}`;
       }
-      
+
       stopNote(note);
     }
   }, [keyboardMapping, stopNote]);
@@ -164,7 +162,7 @@ function App() {
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -174,12 +172,12 @@ function App() {
   const playSong = useCallback((song: { notes: string[]; durations: number[] }) => {
     setIsPlaying(true);
     setCurrentNoteIndex(0);
-    
+
     // Use metronome BPM for song tempo (quarter note = 1 beat)
     const beatDuration = (60 / metronomeBPM) * 1000; // Convert BPM to milliseconds per beat
-    
+
     let noteIndex = 0;
-    
+
     const playNextNote = () => {
       if (noteIndex >= song.notes.length) {
         setCurrentSong('');
@@ -187,21 +185,21 @@ function App() {
         setCurrentNoteIndex(0);
         return;
       }
-      
+
       setCurrentNoteIndex(noteIndex);
       const note = song.notes[noteIndex];
       const duration = song.durations[noteIndex] * beatDuration; // Use metronome-based timing
-      
+
       // Only play automatic song notes when not in practice mode
       if (note !== 'rest' && !isMuted && !isPracticeMode) {
         playNote(note, duration);
         setTimeout(() => stopNote(note), duration);
       }
-      
+
       noteIndex++;
-      songTimeoutRef.current = setTimeout(playNextNote, duration);
+      songTimeoutRef.current = window.setTimeout(playNextNote, duration);
     };
-    
+
     playNextNote();
   }, [playNote, stopNote, isMuted, isPracticeMode, metronomeBPM]);
 
@@ -224,7 +222,7 @@ function App() {
   const handleToggleMute = () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
-    
+
     if (newMutedState && currentSong) {
       // Entering practice mode
       setIsPracticeMode(true);
@@ -257,7 +255,7 @@ function App() {
         <div className="text-center mb-4">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Music className="w-8 h-8 text-purple-400" />
-            <h1 className="text-4xl font-bold text-white">MIDI Keyboard Player</h1>
+            <h1 className="text-4xl font-bold text-white">NoteFlow - MIDI Keyboard Player</h1>
           </div>
           <p className="text-purple-200">Play music using your computer keyboard</p>
         </div>
@@ -299,8 +297,8 @@ function App() {
                       onClick={() => setIsMetronomeOn(!isMetronomeOn)}
                       className={`
                         px-2 py-0.5 rounded text-xs font-medium transition-all duration-200
-                        ${isMetronomeOn 
-                          ? 'bg-green-600 hover:bg-green-700 text-white' 
+                        ${isMetronomeOn
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
                           : 'bg-slate-600 hover:bg-slate-500 text-slate-200'
                         }
                       `}
@@ -330,7 +328,7 @@ function App() {
             {/* Sample Songs */}
             <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-xl p-3 flex-1 min-h-0">
               <h3 className="text-sm font-semibold text-white mb-2 text-center">Sample Songs</h3>
-              
+
               <div className="space-y-1.5 max-h-full overflow-y-auto">
                 {Object.keys(sampleSongs).map(songName => (
                   <button
@@ -352,7 +350,7 @@ function App() {
 
             {/* Keyboard Settings */}
             <div className="mt-auto">
-              <KeyboardSettings 
+              <KeyboardSettings
                 mapping={keyboardMapping}
                 onMappingChange={setKeyboardMapping}
               />
@@ -383,7 +381,7 @@ function App() {
 
         {/* Bottom - Piano Component */}
         <div className="mt-4">
-          <Piano 
+          <Piano
             activeNotes={activeNotes}
             onNotePlay={playNote}
             onNoteStop={stopNote}

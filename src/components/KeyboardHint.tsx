@@ -7,14 +7,14 @@ interface KeyboardHintProps {
   onClose: () => void;
 }
 
-export const KeyboardHint: React.FC<KeyboardHintProps> = ({ 
-  targetNote, 
-  keyboardMapping, 
-  onClose 
+export const KeyboardHint: React.FC<KeyboardHintProps> = ({
+  targetNote,
+  keyboardMapping,
+  onClose
 }) => {
   // Find all keys that can play this note (any octave)
   const targetNoteName = targetNote.replace(/[#b]?\d+$/, ''); // Remove octave and accidentals
-  
+
   const matchingKeys = Object.entries(keyboardMapping).filter(([key, mapping]) => {
     return mapping.note === targetNoteName;
   });
@@ -48,7 +48,7 @@ export const KeyboardHint: React.FC<KeyboardHintProps> = ({
           <p className="text-purple-200 mb-4">
             Press any of the highlighted keys to play "{targetNoteName}":
           </p>
-          
+
           {/* Keyboard Layout */}
           <div className="space-y-2">
             {keyboardRows.map((row, rowIndex) => (
@@ -59,14 +59,14 @@ export const KeyboardHint: React.FC<KeyboardHintProps> = ({
                 {row.keys.map(key => {
                   const isHighlighted = isKeyHighlighted(key);
                   const mapping = keyboardMapping[key];
-                  
+
                   return (
                     <div
                       key={key}
                       className={`
                         w-10 h-10 rounded flex flex-col items-center justify-center text-xs font-bold transition-all duration-300
-                        ${isHighlighted 
-                          ? 'bg-yellow-400 text-black animate-pulse scale-110 shadow-lg shadow-yellow-400/50' 
+                        ${isHighlighted
+                          ? 'bg-yellow-400 text-black animate-pulse scale-110 shadow-lg shadow-yellow-400/50'
                           : 'bg-slate-600 text-white'
                         }
                       `}

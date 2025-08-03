@@ -19,9 +19,9 @@ const defaultRows = [
 const notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C'];
 const solfege = ['do', 're', 'mi', 'fa', 'so', 'la', 'ti', 'do'];
 
-export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({ 
-  mapping, 
-  onMappingChange 
+export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({
+  mapping,
+  onMappingChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [tempMapping, setTempMapping] = useState<KeyboardMapping>(mapping);
@@ -29,12 +29,12 @@ export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({
   const updateRowOctave = (rowIndex: number, octave: number) => {
     const newMapping = { ...tempMapping };
     const row = defaultRows[rowIndex];
-    
+
     row.keys.forEach((key, noteIndex) => {
       const finalOctave = noteIndex === 7 ? octave + 1 : octave; // Last note is next octave
       newMapping[key] = { note: notes[noteIndex], octave: finalOctave };
     });
-    
+
     setTempMapping(newMapping);
   };
 
@@ -45,25 +45,25 @@ export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({
 
   const resetToDefault = () => {
     const defaultMapping: KeyboardMapping = {};
-    
+
     // QWERTY row - Octave 3-4
     defaultRows[0].keys.forEach((key, index) => {
       const octave = index === 7 ? 4 : 3;
       defaultMapping[key] = { note: notes[index], octave };
     });
-    
+
     // ASDF row - Octave 4-5
     defaultRows[1].keys.forEach((key, index) => {
       const octave = index === 7 ? 5 : 4;
       defaultMapping[key] = { note: notes[index], octave };
     });
-    
+
     // ZXCV row - Octave 5-6
     defaultRows[2].keys.forEach((key, index) => {
       const octave = index === 7 ? 6 : 5;
       defaultMapping[key] = { note: notes[index], octave };
     });
-    
+
     setTempMapping(defaultMapping);
   };
 
@@ -100,7 +100,7 @@ export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({
         <div className="space-y-6">
           {defaultRows.map((row, rowIndex) => {
             const currentOctave = getCurrentRowOctave(rowIndex);
-            
+
             return (
               <div key={rowIndex} className="bg-slate-700 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -118,12 +118,11 @@ export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({
                     </select>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-8 gap-2">
                   {row.keys.map((key, noteIndex) => {
-                    const mapping = tempMapping[key];
                     const displayOctave = noteIndex === 7 ? currentOctave + 1 : currentOctave;
-                    
+
                     return (
                       <div key={key} className="text-center">
                         <div className="bg-white text-gray-800 w-10 h-10 rounded flex items-center justify-center font-bold text-sm mb-1">
@@ -150,7 +149,7 @@ export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({
             <Save className="w-4 h-4" />
             Save Settings
           </button>
-          
+
           <button
             onClick={resetToDefault}
             className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors"
@@ -158,7 +157,7 @@ export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({
             <RotateCcw className="w-4 h-4" />
             Reset to Default
           </button>
-          
+
           <button
             onClick={() => setIsOpen(false)}
             className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
