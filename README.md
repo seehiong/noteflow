@@ -1,6 +1,6 @@
 # NoteFlow - MIDI Keyboard Player with Computer Key Mapping
 
-## 🚀 [Live Demo](https://endearing-frangollo-73728e.netlify.app/)
+## 🚀 [Live Demo](https://wondrous-conkies-5d34fe.netlify.app/)
 
 **Try it now!** Click the link above to start playing piano with your computer keyboard instantly - no installation required!
 
