@@ -70,8 +70,19 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
   }
 
   const getNoteDisplay = (note: string) => {
-    if (note === 'rest') return '𝄽'; // Rest symbol
-    return note.replace(/\d+/, ''); // Remove octave number for display
+    if (note === 'rest') return '𝄽'; // Proper rest symbol
+    const match = note.match(/^([A-G])([#b]?)(\d+)$/);
+    if (match) {
+      const [, base, accidental, octave] = match;
+      const accidentalSymbol = accidental === '#' ? '♯' : accidental === 'b' ? '♭' : '';
+      return (
+        <>
+          <span>{base}{accidentalSymbol}</span>
+          <sub className="opacity-60">{octave}</sub>
+        </>
+      );
+    }
+    return note.replace(/\d+/, '');
   };
 
   const getNoteDuration = (duration: number) => {
@@ -79,6 +90,41 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
     if (duration >= 1) return '𝅗𝅥'; // Half note
     if (duration >= 0.5) return '𝅘𝅥'; // Quarter note
     return '𝅘𝅥𝅮'; // Eighth note
+  };
+
+  // Helper: parses note string for display info (e.g., F#4 -> F, #, 4)
+  const parseNoteSymbol = (note: string) => {
+    const match = note.match(/^([A-G])([#b]?)(\d+)$/);
+    if (match) {
+      const [, base, accidental, octave] = match;
+      return { base, accidental, octave };
+    }
+    // fallback: rest or non-standard note
+    return { base: note.replace(/\d+/, ""), accidental: "", octave: "" };
+  };
+
+  // Helper: determines if ledger line is needed
+  const shouldShowLedgerLine = (note: string) => {
+    const { base, octave } = parseNoteSymbol(note);
+    // Customize the threshold as per staff vertical position
+    // For simplicity, let's add ledger for these cases:
+    // - C4 (below staff, often needs one short line)
+    // - A5, B5 (above staff for treble clef)
+    if (
+      (octave && Number(octave) < 4 && (base === "C" || base === "D")) ||
+      (octave && Number(octave) > 5 && (base === "A" || base === "B"))
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  // Helper: returns Y-position for ledger line in px
+  const getLedgerLineY = (note: string) => {
+    const { base, octave } = parseNoteSymbol(note);
+    if (octave && Number(octave) < 4) return "72px"; // below staff
+    if (octave && Number(octave) > 5) return "10px"; // above staff
+    return "0px";
   };
 
   return (
@@ -114,7 +160,7 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
             `}
           >
             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-            {isMuted ? 'Practice Mode' : 'Listen Mode'}
+            {isMuted ? 'Practice Mode (Enable Audio)' : 'Listen Mode'}
           </button>
 
           <button
@@ -180,10 +226,10 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
                 />
               ))}
               {/* Treble clef */}
-              <text x="10" y="55" fontSize="36" fill="#e5e7eb">𝄞</text>
+              <text x="10" y="74" fontSize="82" fill="#e5e7eb">𝄞</text>
               {/* Time signature */}
-              <text x="60" y="45" fontSize="20" fill="#e5e7eb" fontWeight="bold">4</text>
-              <text x="60" y="65" fontSize="20" fill="#e5e7eb" fontWeight="bold">4</text>
+              <text x="60" y="45" fontSize="40" fill="#e5e7eb" fontWeight="bold">4</text>
+              <text x="60" y="75" fontSize="40" fill="#e5e7eb" fontWeight="bold">4</text>
             </svg>
 
             {/* Notes */}
@@ -193,6 +239,10 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
                 const isPastNote = index < currentNoteIndex;
                 const isRest = note === 'rest';
                 const isWaitingNote = isPracticeMode && isCurrentNote;
+
+                // Parsing symbols
+                const { base, accidental, octave } = parseNoteSymbol(note);
+                const accidentalSymbol = accidental === "#" ? "♯" : accidental === "b" ? "♭" : "";
 
                 return (
                   <div
@@ -204,25 +254,43 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
                       ${isWaitingNote ? 'animate-bounce' : ''}
                     `}
                   >
-                    {/* Note symbol */}
-                    <div
-                      onClick={isWaitingNote ? onShowHint : undefined}
-                      className={`
-                        text-3xl font-bold transition-all duration-300 mb-1 ${isWaitingNote ? 'cursor-pointer hover:scale-110' : ''}
-                        ${isCurrentNote
-                          ? isPracticeMode
-                            ? 'text-red-400 animate-pulse shadow-lg'
-                            : 'text-yellow-400 animate-pulse'
-                          : isPastNote
-                            ? 'text-green-400'
-                            : 'text-white'
-                        }
-                      `}
-                      style={{
-                        marginTop: isRest ? '30px' : getVerticalPosition(note)
-                      }}
-                    >
-                      {getNoteDuration(songData.durations[index])}
+                    {/* Staff Ledger line, if needed */}
+                    {shouldShowLedgerLine(note) && (
+                      <span
+                        className="absolute left-0 right-0 h-1 bg-white"
+                        style={{ top: getLedgerLineY(note), zIndex: 0, width: "40px" }}
+                      />
+                    )}
+
+                    {/* Accidental + Notehead + Duration symbol */}
+                    <div className="flex items-center relative z-10">
+                      {/* Accidental symbol */}
+                      {accidentalSymbol && (
+                        <span className="text-2xl mr-1 -ml-2 text-white font-bold select-none">
+                          {accidentalSymbol}
+                        </span>
+                      )}
+
+                      {/* Note symbol (duration) */}
+                      <span
+                        onClick={isWaitingNote ? onShowHint : undefined}
+                        className={`
+            text-3xl font-bold transition-all duration-300 mb-1 ${isWaitingNote ? 'cursor-pointer hover:scale-110' : ''}
+            ${isCurrentNote
+                            ? isPracticeMode
+                              ? 'text-red-400 animate-pulse shadow-lg'
+                              : 'text-yellow-400 animate-pulse'
+                            : isPastNote
+                              ? 'text-green-400'
+                              : 'text-white'
+                          }
+          `}
+                        style={{
+                          marginTop: isRest ? '30px' : getVerticalPosition(note)
+                        }}
+                      >
+                        {isRest ? '𝄽' : getNoteDuration(songData.durations[index])}
+                      </span>
                     </div>
 
                     {/* Note name */}
@@ -242,7 +310,7 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
                       {getNoteDisplay(note)}
                     </div>
 
-                    {/* Beat indicator */}
+                    {/* Beat value (duration in seconds or beats) */}
                     <div className="text-xs text-purple-300">
                       {songData.durations[index]}
                     </div>
@@ -277,8 +345,8 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
         <div className="w-full bg-gray-700 rounded-full h-2">
           <div
             className={`h-2 rounded-full transition-all duration-300 ${isPracticeMode
-                ? 'bg-gradient-to-r from-red-500 to-orange-500'
-                : 'bg-gradient-to-r from-purple-500 to-pink-500'
+              ? 'bg-gradient-to-r from-red-500 to-orange-500'
+              : 'bg-gradient-to-r from-purple-500 to-pink-500'
               }`}
             style={{ width: `${(currentNoteIndex / songData.notes.length) * 100}%` }}
           />
@@ -290,6 +358,7 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
 
 // Helper function to position notes vertically on the staff
 const getVerticalPosition = (note: string): string => {
+  // Base positions for notes in octave 4 (middle octave)
   const notePositions: { [key: string]: number } = {
     'C': 60,  // Below staff
     'D': 52,  // Bottom line
@@ -300,8 +369,26 @@ const getVerticalPosition = (note: string): string => {
     'B': 15,  // Between top lines
   };
 
-  const noteName = note.replace(/[#b]\d+|\d+/g, '');
-  const position = notePositions[noteName] || 30;
+  // Parse note name and octave
+  const noteMatch = note.match(/^([A-G][#b]?)(\d+)$/);
+  if (!noteMatch) {
+    // Fallback for notes without clear format
+    const noteName = note.replace(/[#b]\d+|\d+/g, '');
+    return `${notePositions[noteName] || 30}px`;
+  }
 
-  return `${position}px`;
+  const [, noteName, octaveStr] = noteMatch;
+  const octave = parseInt(octaveStr, 10);
+  const baseNoteName = noteName.replace(/[#b]/, ''); // Remove sharp/flat for position lookup
+
+  // Get base position for the note
+  const basePosition = notePositions[baseNoteName] || 30;
+
+  // Adjust position based on octave (each octave is about 35 pixels apart)
+  // Higher octaves should be higher on the staff (smaller y values)
+  const octaveOffset = (4 - octave) * 35; // Octave 4 is the reference (0 offset)
+
+  const finalPosition = basePosition + octaveOffset;
+
+  return `${Math.max(0, finalPosition)}px`; // Ensure position doesn't go negative
 };
