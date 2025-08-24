@@ -1,3 +1,5 @@
+// src/utils/noteMapping.ts
+
 export const noteMapping: { [key: string]: string } = {
   // First row (QWERTYUI) - Base octave (do re mi fa so la ti do)
   'q': 'C',

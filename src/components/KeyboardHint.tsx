@@ -1,40 +1,80 @@
-import React from 'react';
+// src/components/KeyboardHint.tsx
+
+import React, { useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { normalizeNote } from '../utils/musicUtils';
 
 interface KeyboardHintProps {
   targetNote: string;
-  keyboardMapping: { [key: string]: { note: string; octave: number } };
   onClose: () => void;
 }
 
+const pianoKeyLayout = [
+  // White Keys
+  { note: 'C', computerKey: 'a', type: 'white' },
+  { note: 'D', computerKey: 's', type: 'white' },
+  { note: 'E', computerKey: 'd', type: 'white' },
+  { note: 'F', computerKey: 'f', type: 'white' },
+  { note: 'G', computerKey: 'g', type: 'white' },
+  { note: 'A', computerKey: 'h', type: 'white' },
+  { note: 'B', computerKey: 'j', type: 'white' },
+  // Black Keys (with corresponding flat notes)
+  { note: 'C#', flatNote: 'Db', computerKey: 'w', type: 'black', position: 0.7 },
+  { note: 'D#', flatNote: 'Eb', computerKey: 'e', type: 'black', position: 1.7 },
+  { note: 'F#', flatNote: 'Gb', computerKey: 't', type: 'black', position: 3.7 },
+  { note: 'G#', flatNote: 'Ab', computerKey: 'y', type: 'black', position: 4.7 },
+  { note: 'A#', flatNote: 'Bb', computerKey: 'u', type: 'black', position: 5.7 },
+];
+
 export const KeyboardHint: React.FC<KeyboardHintProps> = ({
   targetNote,
-  keyboardMapping,
   onClose
 }) => {
-  // Find all keys that can play this note (any octave)
-  const targetNoteName = targetNote.replace(/[#b]?\d+$/, ''); // Remove octave and accidentals
+  // Memoize all derived note properties at once to avoid re-calculation and ensure consistency.
+  const noteInfo = useMemo(() => {
+    if (!targetNote || targetNote === 'rest') {
+      return { searchNoteName: null, targetOctave: 4, displayNote: targetNote };
+    }
 
-  const matchingKeys = Object.entries(keyboardMapping).filter(([key, mapping]) => {
-    return mapping.note === targetNoteName;
-  });
+    const normalized = normalizeNote(targetNote);
+    const match = normalized.match(/^([A-G]#?)(\d+)$/);
 
-  const keyboardRows = [
-    { keys: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i'], label: 'QWERTY' },
-    { keys: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k'], label: 'ASDF' },
-    { keys: ['z', 'x', 'c', 'v', 'b', 'n', 'm', ','], label: 'ZXCV' }
-  ];
+    if (!match) {
+      return { searchNoteName: null, targetOctave: 4, displayNote: targetNote };
+    }
 
-  const isKeyHighlighted = (key: string) => {
-    return matchingKeys.some(([matchKey]) => matchKey === key);
-  };
+    // The normalized note name (e.g., "A#") is our search key
+    const searchName = match[1];
+    const octave = parseInt(match[2], 10);
+
+    // Display the original note ("Bb4") for user clarity
+    return { searchNoteName: searchName, targetOctave: octave, displayNote: targetNote };
+  }, [targetNote]);
+
+  const { searchNoteName, targetOctave, displayNote } = noteInfo;
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-xl p-6 max-w-lg w-full">
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-800 rounded-xl p-6 max-w-lg w-full border border-purple-800 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-white">
-            Play Note: <span className="text-yellow-400">{targetNote.replace(/\d+$/, '')}</span>
+            Play Note: <span className="text-yellow-400">{displayNote}</span>
           </h3>
           <button
             onClick={onClose}
@@ -45,59 +85,40 @@ export const KeyboardHint: React.FC<KeyboardHintProps> = ({
         </div>
 
         <div className="mb-6">
-          <p className="text-purple-200 mb-4">
-            Press any of the highlighted keys to play "{targetNoteName}":
+          <p className="text-purple-200 mb-4 text-center">
+            Press the highlighted key on your computer keyboard.
           </p>
 
-          {/* Keyboard Layout */}
-          <div className="space-y-2">
-            {keyboardRows.map((row, rowIndex) => (
-              <div key={rowIndex} className="flex justify-center gap-1">
-                <div className="w-16 text-xs text-purple-300 flex items-center">
-                  {row.label}
+          <div className="relative h-40">
+            <div className="flex justify-center h-full">
+              {pianoKeyLayout.filter(k => k.type === 'white').map(key => {
+                const isHighlighted = searchNoteName === key.note;
+                return (
+                  <div key={key.computerKey} className={`w-12 h-full border-2 border-slate-500 rounded-b-lg flex flex-col justify-end items-center p-2 transition-all ${isHighlighted ? 'bg-yellow-400 text-black animate-pulse scale-105 shadow-lg shadow-yellow-400/50' : 'bg-white text-slate-600'}`}>
+                    <span className="text-2xl font-bold">{key.computerKey.toUpperCase()}</span>
+                    <span className="text-xs">{key.note}{targetOctave}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {pianoKeyLayout.filter(k => k.type === 'black').map(key => {
+              const isHighlighted = searchNoteName === key.note;
+              return (
+                <div key={key.computerKey} className={`absolute top-0 w-8 h-24 border-2 border-slate-900 rounded-b-lg flex flex-col justify-end items-center p-1 z-10 transition-all text-center leading-tight ${isHighlighted ? 'bg-yellow-400 text-black animate-pulse scale-105 shadow-lg shadow-yellow-400/50' : 'bg-black text-white'}`} style={{ left: `calc(50% - (3.5 * 3rem) + (${key.position!} * 3rem))` }}>
+                  <span className="text-xl font-bold mb-1">{key.computerKey.toUpperCase()}</span>
+                  <div className="text-[10px] font-medium">
+                    <div>{key.note}{targetOctave}</div>
+                    <div>{key.flatNote}{targetOctave}</div>
+                  </div>
                 </div>
-                {row.keys.map(key => {
-                  const isHighlighted = isKeyHighlighted(key);
-                  const mapping = keyboardMapping[key];
-
-                  return (
-                    <div
-                      key={key}
-                      className={`
-                        w-10 h-10 rounded flex flex-col items-center justify-center text-xs font-bold transition-all duration-300
-                        ${isHighlighted
-                          ? 'bg-yellow-400 text-black animate-pulse scale-110 shadow-lg shadow-yellow-400/50'
-                          : 'bg-slate-600 text-white'
-                        }
-                      `}
-                    >
-                      <div className="text-sm">{key.toUpperCase()}</div>
-                      {mapping && (
-                        <div className="text-xs opacity-75">
-                          {mapping.note}{mapping.octave}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Piano Keys Hint */}
-        <div className="bg-slate-700 rounded-lg p-4">
-          <p className="text-purple-200 text-sm mb-2">
-            Or click any <span className="text-yellow-400 font-semibold">{targetNoteName}</span> key on the virtual piano below
-          </p>
-          <div className="text-xs text-purple-300">
-            💡 Tip: Any octave of {targetNoteName} will work!
+              );
+            })}
           </div>
         </div>
 
         <button
           onClick={onClose}
-          className="w-full mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+          className="w-full mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
         >
           Got it!
         </button>

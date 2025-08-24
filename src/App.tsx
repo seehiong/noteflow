@@ -1,3 +1,5 @@
+// src/App.tsx
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Piano } from './components/Piano';
 import { AudioEngine } from './utils/AudioEngine';
@@ -6,6 +8,7 @@ import { MusicalScore } from './components/MusicalScore';
 import { noteMapping as defaultNoteMapping } from './utils/noteMapping';
 import { sampleSongs } from './data/sampleSongs';
 import { Volume2, Music, ChromeIcon as Metronome } from 'lucide-react';
+import { normalizeNote } from './utils/musicUtils';
 
 interface KeyboardMapping {
   [key: string]: { note: string; octave: number };
@@ -69,15 +72,17 @@ function App() {
     };
   }, []);
 
-  const playNote = useCallback((note: string, duration?: number) => {
+  const playNote = useCallback((rawNote: string, duration?: number) => {
     if (!audioEngineRef.current) return;
+
+    const note = normalizeNote(rawNote);
 
     // In practice mode, check if this is the correct note
     if (isPracticeMode && currentSong && sampleSongs[currentSong]) {
       const expectedNote = sampleSongs[currentSong].notes[currentNoteIndex];
-      // Extract note name without octave for comparison
-      const playedNoteName = note.replace(/\d+$/, ''); // Remove octave number
-      const expectedNoteName = expectedNote.replace(/\d+$/, ''); // Remove octave number
+
+      const playedNoteName = note.replace(/\d+$/, '');
+      const expectedNoteName = expectedNote.replace(/\d+$/, '');
 
       if (playedNoteName === expectedNoteName || expectedNote === 'rest') {
         // Correct note! Advance to next note
@@ -85,8 +90,8 @@ function App() {
           const nextIndex = prev + 1;
           if (nextIndex >= sampleSongs[currentSong].notes.length) {
             // Song completed!
-            setIsPracticeMode(false);
-            return nextIndex; // Keep at end to show completion
+            setIsPracticeMode(false); // Or handle completion differently
+            return nextIndex;
           }
           return nextIndex;
         });
@@ -97,21 +102,31 @@ function App() {
     if (!isMuted || !duration) { // Play user input notes even in practice mode
       audioEngineRef.current.playNote(note, volume, duration);
     }
-    setActiveNotes(prev => new Set([...prev, note]));
 
-    if (!duration) {
-      setTimeout(() => {
-        setActiveNotes(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(note);
+    if (duration) {
+      // THIS IS A SONG NOTE: Just turn the key on.
+      // The playSong function will be responsible for turning it off.
+      setActiveNotes(prev => new Set(prev).add(note));
+    } else {
+      // THIS IS A USER-PLAYED NOTE: Apply the flicker logic for repeated notes.
+      setActiveNotes(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(note)) {
+          newSet.delete(note); // Remove it first
           return newSet;
-        });
-      }, 150);
+        }
+        return prev;
+      });
+
+      setTimeout(() => {
+        setActiveNotes(prev => new Set(prev).add(note)); // Add it back immediately
+      }, 0);
     }
   }, [volume, isMuted, isPracticeMode, currentSong, currentNoteIndex]);
 
-  const stopNote = useCallback((note: string) => {
+  const stopNote = useCallback((rawNote: string) => {
     if (!audioEngineRef.current) return;
+    const note = normalizeNote(rawNote);
 
     audioEngineRef.current.stopNote(note);
     setActiveNotes(prev => {
@@ -189,11 +204,31 @@ function App() {
       setCurrentNoteIndex(noteIndex);
       const note = song.notes[noteIndex];
       const duration = song.durations[noteIndex] * beatDuration; // Use metronome-based timing
+      
+      // Check if this note is the same as the previous note (for articulation)
+      const previousNote = noteIndex > 0 ? song.notes[noteIndex - 1] : null;
+      const isRepeatedNote = note === previousNote && note !== 'rest';
 
       // Only play automatic song notes when not in practice mode
       if (note !== 'rest' && !isMuted && !isPracticeMode) {
-        playNote(note, duration);
-        setTimeout(() => stopNote(note), duration);
+        if (isRepeatedNote) {
+          // For repeated notes, add a brief gap for articulation
+          const articulationGap = Math.min(50, duration * 0.1); // 10% of duration or 50ms, whichever is smaller
+          const actualNoteDuration = duration - articulationGap;
+          
+          // Stop the previous note first (if it's still playing)
+          stopNote(note);
+          
+          // Small delay before playing the new note
+          setTimeout(() => {
+            playNote(note, actualNoteDuration);
+            setTimeout(() => stopNote(note), actualNoteDuration);
+          }, articulationGap);
+        } else {
+          // Normal note playing
+          playNote(note, duration);
+          setTimeout(() => stopNote(note), duration);
+        }
       }
 
       noteIndex++;

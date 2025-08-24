@@ -1,3 +1,5 @@
+// src/components/SampleSongs.tsx
+
 import React from 'react';
 import { Play } from 'lucide-react';
 import { sampleSongs } from '../data/sampleSongs';
