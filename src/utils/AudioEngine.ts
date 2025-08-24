@@ -20,7 +20,7 @@ export class AudioEngine {
 
     // Create dedicated gain node for metronome volume control
     this.metronomeGainNode = this.audioContext.createGain();
-    this.metronomeGainNode.gain.setValueAtTime(0.5, this.audioContext.currentTime);
+    this.metronomeGainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
     this.metronomeGainNode.connect(this.masterGainNode);
 
     this.initializeReverb();
@@ -108,7 +108,7 @@ export class AudioEngine {
     // Quick attack and decay for a sharp click
     gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
     gainNode.gain.linearRampToValueAtTime(
-      isDownbeat ? 0.4 : 0.3,
+      isDownbeat ? 0.3 : 0.2,
       this.audioContext.currentTime + 0.01
     );
     gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);

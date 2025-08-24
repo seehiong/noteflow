@@ -1,12 +1,6 @@
 // src/data/sampleSongs.ts
 
 export const sampleSongs: { [key: string]: { notes: string[]; durations: number[] } } = {
-  "Ascneding": {
-    notes: ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4',
-      'C5', 'D5', 'E5', 'F5', 'G5', 'A5', 'B5'],
-    durations: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 1, 1, 1]
-  },
   "Happy Birthday": {
     notes: ['C4', 'C4', 'D4', 'C4', 'F4', 'E4', 'rest', 'C4', 'C4', 'D4', 'C4', 'G4', 'F4', 'rest',
       'C4', 'C4', 'C5', 'A4', 'F4', 'E4', 'D4', 'rest', 'Bb4', 'Bb4', 'A4', 'F4', 'G4', 'F4'],
@@ -72,5 +66,5 @@ export const sampleSongs: { [key: string]: { notes: string[]; durations: number[
       1, 1, 2, 1, 1, 2, 1, 1, 1.5, 0.5, 4, 1,
       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4
     ]
-  }
+  },
 };

@@ -1,3 +1,5 @@
+// src/components/KeyboardSettings.tsx
+
 import React, { useState } from 'react';
 import { Settings, Save, RotateCcw } from 'lucide-react';
 
@@ -169,7 +171,7 @@ export const KeyboardSettings: React.FC<KeyboardSettingsProps> = ({
         <div className="mt-4 text-sm text-purple-300">
           <p>• Each row can be set to a different base octave</p>
           <p>• The last key in each row (I, K, comma) plays the next octave's "do"</p>
-          <p>• Hold Shift for sharps (#) or Ctrl for flats (♭)</p>
+          <p>• Hold Shift for sharps (#) or Alt/Option for flats (♭)</p>
         </div>
       </div>
     </div>
