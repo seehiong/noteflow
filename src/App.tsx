@@ -1,5 +1,3 @@
-// src/App.tsx
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Piano } from './components/Piano';
 import { AudioEngine } from './utils/AudioEngine';
@@ -7,7 +5,7 @@ import { KeyboardSettings } from './components/KeyboardSettings';
 import { MusicalScore } from './components/MusicalScore';
 import { noteMapping as defaultNoteMapping } from './utils/noteMapping';
 import { sampleSongs } from './data/sampleSongs';
-import { Volume2, Music, ChromeIcon as Metronome } from 'lucide-react';
+import { Volume2, Music, Clock, Play, Pause, Eye, EyeOff } from 'lucide-react';
 import { normalizeNote } from './utils/musicUtils';
 
 interface KeyboardMapping {
@@ -26,6 +24,7 @@ function App() {
   const [showHint, setShowHint] = useState(false);
   const [isMetronomeOn, setIsMetronomeOn] = useState(false);
   const [metronomeBPM, setMetronomeBPM] = useState(120);
+  const [showMobileControls, setShowMobileControls] = useState(false);
 
   const [keyboardMapping, setKeyboardMapping] = useState<KeyboardMapping>(() => {
     // Initialize with default mapping
@@ -321,22 +320,42 @@ function App() {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-hidden">
-      <div className="container mx-auto px-4 py-4 h-full flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="container mx-auto px-2 py-2 flex flex-col min-h-screen">
         {/* Header */}
-        <div className="text-center mb-4">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Music className="w-8 h-8 text-purple-400" />
-            <h1 className="text-4xl font-bold text-white">NoteFlow - MIDI Keyboard Player</h1>
+        <div className="text-center mb-2">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Music className="w-5 h-5 text-purple-400" />
+            <h1 className="text-xl font-bold text-white">NoteFlow</h1>
           </div>
-          <p className="text-purple-200">Play music using your computer keyboard</p>
+          <p className="text-xs text-purple-200">Play music using your computer keyboard</p>
         </div>
 
-        {/* Main Content - Two Column Layout */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
-          {/* Left Column - Controls and Songs */}
-          <div className="space-y-4">
-            {/* Compact Controls */}
+        {/* Mobile Controls Toggle */}
+        <div className="lg:hidden mb-2">
+          <button
+            onClick={() => setShowMobileControls(!showMobileControls)}
+            className="w-full p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center gap-2"
+          >
+            {showMobileControls ? (
+              <>
+                <EyeOff className="w-4 h-4" />
+                Hide Controls
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4" />
+                Show Controls
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Main Content - Responsive Layout */}
+        <div className="flex-1 flex flex-col lg:grid lg:grid-cols-3 gap-2 min-h-0">
+          {/* Left Column - Controls and Songs (Desktop) */}
+          <div className="hidden lg:flex flex-col space-y-3">
+            {/* Desktop Controls */}
             <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-3">
               <div className="grid grid-cols-2 gap-3">
                 {/* Volume Control */}
@@ -362,7 +381,7 @@ function App() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-purple-300 flex items-center gap-1">
-                      <Metronome className="w-3 h-3" />
+                      <Clock className="w-3 h-3" />
                       {metronomeBPM} BPM
                     </label>
                     <button
@@ -429,8 +448,91 @@ function App() {
             </div>
           </div>
 
-          {/* Middle Column - Musical Score */}
-          <div className="lg:col-span-2">
+          {/* Mobile Controls (shown when toggled) */}
+          {showMobileControls && (
+            <div className="lg:hidden space-y-2 mb-2">
+              {/* Volume and Metronome Controls */}
+              <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg p-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Volume Control */}
+                  <div>
+                    <label className="block text-xs font-medium text-purple-300 mb-1">
+                      <div className="flex items-center gap-1">
+                        <Volume2 className="w-3 h-3" />
+                        Vol: {Math.round(volume * 100)}%
+                      </div>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={volume}
+                      onChange={(e) => setVolume(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                  </div>
+
+                  {/* Metronome Control */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-medium text-purple-300 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {metronomeBPM}
+                      </label>
+                      <button
+                        onClick={() => setIsMetronomeOn(!isMetronomeOn)}
+                        className={`
+                          px-2 py-0.5 rounded text-xs font-medium transition-all duration-200
+                          ${isMetronomeOn
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'bg-slate-600 hover:bg-slate-500 text-slate-200'
+                          }
+                        `}
+                      >
+                        {isMetronomeOn ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                    <input
+                      type="range"
+                      min="40"
+                      max="240"
+                      step="5"
+                      value={metronomeBPM}
+                      onChange={(e) => setMetronomeBPM(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                      disabled={!isMetronomeOn}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Songs Section for Mobile */}
+              <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-lg p-2">
+                <h3 className="text-sm font-semibold text-white mb-2 text-center">Sample Songs</h3>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {Object.keys(sampleSongs).map(songName => (
+                    <button
+                      key={songName}
+                      onClick={() => handleSongSelect(songName)}
+                      className={`
+                        p-2 rounded-lg font-medium transition-all duration-200 text-xs
+                        ${currentSong === songName
+                          ? 'bg-emerald-600 text-white shadow-lg'
+                          : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                        }
+                      `}
+                    >
+                      <span className="capitalize">{songName.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Musical Score - Responsive Column */}
+          <div className="lg:col-span-2 flex-1 min-h-0">
             <MusicalScore
               currentSong={currentSong}
               isPlaying={isPlaying}
@@ -451,8 +553,8 @@ function App() {
           </div>
         </div>
 
-        {/* Bottom - Piano Component */}
-        <div className="mt-4">
+        {/* Piano Component - Always at bottom */}
+        <div className="mt-2">
           <Piano
             activeNotes={activeNotes}
             onNotePlay={playNote}
@@ -460,9 +562,18 @@ function App() {
           />
         </div>
 
+        {/* Keyboard Settings for Mobile */}
+        <div className="lg:hidden mt-2">
+          <KeyboardSettings
+            mapping={keyboardMapping}
+            onMappingChange={setKeyboardMapping}
+          />
+        </div>
+
         {/* Footer */}
-        <div className="text-center mt-2 text-purple-300 text-sm">
-          <p>Use your keyboard to play notes • Hold Shift for sharps • Hold Alt/Option for flats</p>
+        <div className="text-center mt-2 text-purple-300 text-xs">
+          <p className="hidden sm:block">Use your keyboard to play notes • Hold Shift for sharps • Hold Alt/Option for flats</p>
+          <p className="sm:hidden">Tap piano keys to play • Use keyboard for desktop</p>
         </div>
       </div>
     </div>
