@@ -1,3 +1,5 @@
+//src/components/Controls.tsx
+
 import React from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 
@@ -23,8 +25,8 @@ export const Controls: React.FC<ControlsProps> = ({ octave, setOctave, volume, s
                 key={oct}
                 onClick={() => setOctave(oct)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${octave === oct
-                    ? 'bg-purple-600 text-white shadow-lg scale-105'
-                    : 'bg-slate-600 text-slate-200 hover:bg-slate-500'
+                  ? 'bg-purple-600 text-white shadow-lg scale-105'
+                  : 'bg-slate-600 text-slate-200 hover:bg-slate-500'
                   }`}
               >
                 {oct}

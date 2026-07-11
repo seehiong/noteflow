@@ -1,4 +1,4 @@
-// src/components/KeyboardHint.tsx
+//src/components/KeyboardHint.tsx
 
 import React, { useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';

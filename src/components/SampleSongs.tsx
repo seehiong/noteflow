@@ -1,4 +1,4 @@
-// src/components/SampleSongs.tsx
+//src/components/SampleSongs.tsx
 
 import React from 'react';
 import { Play } from 'lucide-react';

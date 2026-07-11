@@ -1,4 +1,4 @@
-// src/components/KeyboardSettings.tsx
+//src/components/KeyboardSettings.tsx
 
 import React, { useState } from 'react';
 import { Settings, Save, RotateCcw } from 'lucide-react';

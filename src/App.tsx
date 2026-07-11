@@ -1,77 +1,132 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+//src/App.tsx
+
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Piano } from './components/Piano';
-import { AudioEngine } from './utils/AudioEngine';
 import { KeyboardSettings } from './components/KeyboardSettings';
 import { MusicalScore } from './components/MusicalScore';
 import { noteMapping as defaultNoteMapping } from './utils/noteMapping';
 import { sampleSongs } from './data/sampleSongs';
-import { Volume2, Music, Clock, Play, Pause, Eye, EyeOff } from 'lucide-react';
+import { Volume2, Activity } from 'lucide-react';
 import { normalizeNote } from './utils/musicUtils';
+import { NoteEditor, compileNotation } from './components/NoteEditor';
+import { MidiConsole, ConsoleLog } from './components/MidiConsole';
+import { AIAssistant } from './components/AIAssistant';
+import { MidiRecorder } from './utils/MidiRecorder';
+
+// Imported components & custom hooks
+import { SynthSettings } from './components/SynthSettings';
+import { MelodyExplorer } from './components/MelodyExplorer';
+import { useWebMidi } from './hooks/useWebMidi';
+import { useQwertyKeyboard } from './hooks/useQwertyKeyboard';
+import { useSynth } from './hooks/useSynth';
 
 interface KeyboardMapping {
   [key: string]: { note: string; octave: number };
 }
 
+// Convert note arrays to NoteFlow text notation format
+const convertSongToNotation = (notes: string[], durations: number[]): string => {
+  const tokens: string[] = [];
+  for (let i = 0; i < notes.length; i++) {
+    tokens.push(`${notes[i]}/${durations[i]}`);
+  }
+
+  // Arrange into lines of 8 notes for readable formatting
+  const lines: string[] = [];
+  for (let i = 0; i < tokens.length; i += 8) {
+    lines.push(tokens.slice(i, i + 8).join(' '));
+  }
+  return lines.join('\n');
+};
+
+// Generates the initial key map configurations
+const generateDefaultKeyboardMapping = (): KeyboardMapping => {
+  const mapping: KeyboardMapping = {};
+  Object.entries(defaultNoteMapping).forEach(([key, note]) => {
+    const asdfKeys = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k'];
+    const zxcvKeys = ['z', 'x', 'c', 'v', 'b', 'n', 'm', ','];
+
+    let baseOctave = 3;
+    if (asdfKeys.includes(key)) baseOctave = 4;
+    if (zxcvKeys.includes(key)) baseOctave = 5;
+
+    const isOctaveCompletion = ['i', 'k', ','].includes(key);
+    const finalOctave = isOctaveCompletion ? baseOctave + 1 : baseOctave;
+    mapping[key] = { note, octave: finalOctave };
+  });
+  return mapping;
+};
+
 function App() {
   const [activeNotes, setActiveNotes] = useState<Set<string>>(new Set());
-  const [octave, setOctave] = useState(4);
-  const [volume, setVolume] = useState(0.7);
-  const [currentSong, setCurrentSong] = useState<string>('');
+  const [currentSong, setCurrentSong] = useState<string>('Twinkle Twinkle Star');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentNoteIndex, setCurrentNoteIndex] = useState(0);
+  const [trackNoteIndices, setTrackNoteIndices] = useState<Record<string, number>>({});
   const [isPracticeMode, setIsPracticeMode] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [isMetronomeOn, setIsMetronomeOn] = useState(false);
   const [metronomeBPM, setMetronomeBPM] = useState(120);
-  const [showMobileControls, setShowMobileControls] = useState(false);
+  const [staffExpanded, setStaffExpanded] = useState(false);
+  const [staffFullscreen, setStaffFullscreen] = useState(false);
+  const [consoleCollapsed, setConsoleCollapsed] = useState(false);
+  const [aiCollapsed, setAiCollapsed] = useState(false);
 
-  const [keyboardMapping, setKeyboardMapping] = useState<KeyboardMapping>(() => {
-    // Initialize with default mapping
-    const mapping: KeyboardMapping = {};
-    Object.entries(defaultNoteMapping).forEach(([key, note]) => {
-      const qwertyKeys = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i'];
-      const asdfKeys = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k'];
-      const zxcvKeys = ['z', 'x', 'c', 'v', 'b', 'n', 'm', ','];
-
-      let baseOctave = 3;
-      if (asdfKeys.includes(key)) baseOctave = 4;
-      if (zxcvKeys.includes(key)) baseOctave = 5;
-
-      // Handle octave completion notes
-      const isOctaveCompletion = ['i', 'k', ','].includes(key);
-      const finalOctave = isOctaveCompletion ? baseOctave + 1 : baseOctave;
-      mapping[key] = { note, octave: finalOctave };
-    });
-    return mapping;
+  // Custom states for MIDI IDE workspace
+  const [code, setCode] = useState<string>(() => {
+    const saved = localStorage.getItem('noteflow_workspace');
+    if (saved) return saved;
+    const song = sampleSongs['Twinkle Twinkle Star'];
+    return convertSongToNotation(song.notes, song.durations);
   });
 
-  const audioEngineRef = useRef<AudioEngine | null>(null);
-  const pressedKeys = useRef<Set<string>>(new Set());
-  const activeKeyToNoteMap = useRef<Map<string, string>>(new Map());
-  const songTimeoutRef = useRef<number | null>(null);
+  const [logs, setLogs] = useState<ConsoleLog[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
 
-  useEffect(() => {
-    audioEngineRef.current = new AudioEngine();
-    return () => { audioEngineRef.current?.dispose(); };
+  const [keyboardMapping, setKeyboardMapping] = useState<KeyboardMapping>(generateDefaultKeyboardMapping);
+
+  const songTimeoutRef = useRef<number | null>(null);
+  const playbackTimeoutsRef = useRef<number[]>([]);
+  const midiRecorderRef = useRef(new MidiRecorder());
+
+  // Declare console logging helper
+  const addConsoleLog = useCallback((type: ConsoleLog['type'], message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs(prev => {
+      const newLogs = [...prev, { timestamp, type, message }];
+      return newLogs.slice(-100);
+    });
   }, []);
 
-  // Metronome effect
+  // Hook in audio synthesis engine & parameters
+  const {
+    audioEngineRef,
+    synthType,
+    setSynthType,
+    attack,
+    setAttack,
+    decay,
+    setDecay,
+    sustain,
+    setSustain,
+    release,
+    setRelease,
+    reverbLevel,
+    setReverbLevel,
+    volume,
+    setVolume,
+    handleResetSynth,
+  } = useSynth(addConsoleLog);
+
+  // Cleanup timeouts on unmount
   useEffect(() => {
-    if (!audioEngineRef.current) return;
-
-    if (isMetronomeOn) {
-      audioEngineRef.current.startMetronome(metronomeBPM);
-    } else {
-      audioEngineRef.current.stopMetronome();
-    }
-
     return () => {
-      audioEngineRef.current?.stopMetronome();
+      playbackTimeoutsRef.current.forEach(clearTimeout);
     };
-  }, [isMetronomeOn, metronomeBPM]);
+  }, []);
 
-  const stopNote = useCallback((rawNote: string) => {
+  const stopNote = useCallback((rawNote: string, origin: string = 'Virtual Key') => {
     if (!audioEngineRef.current) return;
     const note = normalizeNote(rawNote);
 
@@ -81,79 +136,75 @@ function App() {
       newSet.delete(note);
       return newSet;
     });
-  }, []);
 
-  // Automatically skip 'rest' notes in practice mode
-  useEffect(() => {
-    // We only run this logic in practice mode with a valid song
-    if (isPracticeMode && currentSong && sampleSongs[currentSong]) {
-      const song = sampleSongs[currentSong];
+    addConsoleLog('input-off', `${note} (${origin})`);
 
-      // Ensure we're not at the end of the song
-      if (currentNoteIndex < song.notes.length) {
-        const currentNote = song.notes[currentNoteIndex];
-
-        // If the current note is a rest, schedule a skip
-        if (currentNote === 'rest') {
-          const beatDuration = song.durations[currentNoteIndex];
-          const restDurationMs = beatDuration * (60 / metronomeBPM) * 1000;
-          const timer = setTimeout(() => {
-            setCurrentNoteIndex(prev => prev + 1);
-          }, restDurationMs);
-          return () => clearTimeout(timer);
-        }
-      }
+    // MIDI Recording stop logs
+    if (midiRecorderRef.current.getRecordingStatus()) {
+      midiRecorderRef.current.recordNoteOff(note);
     }
-  }, [currentNoteIndex, isPracticeMode, currentSong, metronomeBPM]);
+  }, [audioEngineRef, addConsoleLog]);
 
-  const playNote = useCallback((rawNote: string, duration?: number) => {
+  const compiledSongData = useMemo(() => {
+    const res = compileNotation(code);
+    if (res.error) return undefined;
+    return {
+      notes: res.notes,
+      durations: res.durations,
+      tracks: res.tracks,
+      title: currentSong ? currentSong.replace(/([A-Z])/g, ' $1').trim() : 'Custom Song Workspace'
+    };
+  }, [code, currentSong]);
+
+  const playNote = useCallback((rawNote: string, duration?: number, velocity: number = 0.7, origin: string = 'Virtual Key') => {
     if (!audioEngineRef.current) return;
     const note = normalizeNote(rawNote);
 
-    // If the duration is provided, it's a song note from autoplay.
     if (duration) {
       if (!isMuted) {
-        audioEngineRef.current.playNote(note, volume, duration);
+        audioEngineRef.current.playNote(note, velocity, duration, undefined, true);
       }
       setActiveNotes(prev => new Set(prev).add(note));
-      return; // End here for autoplay notes
+      return;
     }
 
-    // Check if we are in practice mode and the note is correct
-    if (isPracticeMode && currentSong && sampleSongs[currentSong]) {
-      const song = sampleSongs[currentSong];
-      // Make sure we're not stuck on a rest (though the useEffect should handle this)
+    addConsoleLog('input-on', `${note} - Velocity: ${Math.round(velocity * 127)} (${origin})`);
+
+    // Record midi signals
+    if (midiRecorderRef.current.getRecordingStatus()) {
+      midiRecorderRef.current.recordNoteOn(note);
+    }
+
+    // Practice mode inputs validation
+    if (isPracticeMode && compiledSongData) {
+      const song = compiledSongData;
       if (song.notes[currentNoteIndex] === 'rest') return;
 
       const expectedNote = normalizeNote(song.notes[currentNoteIndex]);
 
       if (note === expectedNote) {
-        // Calculate the note's duration based on the song's tempo
         const beatDuration = song.durations[currentNoteIndex];
         const noteDurationMs = beatDuration * (60 / metronomeBPM) * 1000;
 
-        // Play the audio and visuals for the correct duration
-        audioEngineRef.current.playNote(note, volume, noteDurationMs);
+        audioEngineRef.current.playNote(note, velocity, noteDurationMs);
         setActiveNotes(prev => new Set(prev).add(note));
 
         const releaseBuffer = 50;
         setTimeout(() => {
-          stopNote(note);
+          stopNote(note, 'Practice Playback');
         }, noteDurationMs - releaseBuffer);
 
-        // Advance to the next note in the song
         setCurrentNoteIndex(prev => prev + 1);
 
         if (currentNoteIndex + 1 >= song.notes.length) {
           setIsPracticeMode(false);
+          addConsoleLog('system', 'Congratulations! You completed practicing the song.');
         }
-        return; // Handled, so we exit
+        return;
       }
     }
 
-    // Default handling for FREE PLAY or an INCORRECT NOTE in practice mode
-    audioEngineRef.current.playNote(note, volume);
-
+    audioEngineRef.current.playNote(note, velocity);
     setActiveNotes(prev => {
       const newSet = new Set(prev);
       if (newSet.has(note)) {
@@ -167,126 +218,221 @@ function App() {
       setActiveNotes(prev => new Set(prev).add(note));
     }, 0);
 
-  }, [volume, isMuted, isPracticeMode, currentSong, currentNoteIndex, metronomeBPM, stopNote]);
+  }, [audioEngineRef, isMuted, isPracticeMode, compiledSongData, currentNoteIndex, metronomeBPM, stopNote, addConsoleLog]);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    const key = event.key.toLowerCase();
-    if (pressedKeys.current.has(key) || event.repeat) return;
+  // Bind key listeners using custom hooks
+  useQwertyKeyboard(keyboardMapping, playNote, stopNote);
 
-    const mapping = keyboardMapping[key];
-    if (mapping) {
-      // Prevent browser shortcuts (e.g., Alt+F opening a menu)
-      event.preventDefault();
-      pressedKeys.current.add(key);
+  const handleMidiNoteOn = useCallback((noteName: string, velocity: number) => {
+    playNote(noteName, undefined, velocity, 'MIDI Keyboard');
+  }, [playNote]);
 
-      let noteToPlay: string;
-
-      // Determine the note based on modifiers (Shift > Alt > Natural)
-      if (event.shiftKey && !['E', 'B'].includes(mapping.note)) {
-        noteToPlay = `${mapping.note}#${mapping.octave}`;
-      } else if (event.altKey && !['C', 'F'].includes(mapping.note)) {
-        noteToPlay = `${mapping.note}b${mapping.octave}`;
-      } else {
-        noteToPlay = `${mapping.note}${mapping.octave}`;
-      }
-
-      // Play the note and store the mapping
-      playNote(noteToPlay);
-      activeKeyToNoteMap.current.set(key, noteToPlay);
-    }
-  }, [octave, playNote, keyboardMapping]);
-
-  const handleKeyUp = useCallback((event: KeyboardEvent) => {
-    const key = event.key.toLowerCase();
-    pressedKeys.current.delete(key);
-
-    // Look up which note was actually played by this key
-    const noteToStop = activeKeyToNoteMap.current.get(key);
-
-    if (noteToStop) {
-      stopNote(noteToStop);
-      // Clean up the mapping
-      activeKeyToNoteMap.current.delete(key);
-    }
+  const handleMidiNoteOff = useCallback((noteName: string) => {
+    stopNote(noteName, 'MIDI Keyboard');
   }, [stopNote]);
 
+  const { midiConnected, midiDeviceName } = useWebMidi(handleMidiNoteOn, handleMidiNoteOff, addConsoleLog);
+
+  // Autosave code content to local storage
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    localStorage.setItem('noteflow_workspace', code);
+  }, [code]);
+
+  // Metronome listeners
+  useEffect(() => {
+    if (!audioEngineRef.current) return;
+
+    if (isMetronomeOn) {
+      audioEngineRef.current.startMetronome(metronomeBPM);
+    } else {
+      audioEngineRef.current.stopMetronome();
+    }
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      audioEngineRef.current?.stopMetronome();
     };
-  }, [handleKeyDown, handleKeyUp]);
+  }, [audioEngineRef, isMetronomeOn, metronomeBPM]);
 
-  const playSong = useCallback((song: { notes: string[]; durations: number[] }) => {
-    setIsPlaying(true);
-    setCurrentNoteIndex(0);
-
-    // Use metronome BPM for song tempo (quarter note = 1 beat)
-    const beatDurationMs = (60 / metronomeBPM) * 1000; 
-
-    let noteIndex = 0;
-
-    const playNextNote = () => {
-      if (noteIndex >= song.notes.length) {
-        setCurrentSong('');
-        setIsPlaying(false);
-        setCurrentNoteIndex(0);
-        return;
-      }
-
-      setCurrentNoteIndex(noteIndex);
-      const note = song.notes[noteIndex];
-      const duration = song.durations[noteIndex] * beatDurationMs;
-
-      // Check if this note is the same as the previous note (for articulation)
-      const previousNote = noteIndex > 0 ? song.notes[noteIndex - 1] : null;
-      const isRepeatedNote = note === previousNote && note !== 'rest';
-
-      // Only play automatic song notes when not in practice mode
-      if (note !== 'rest' && !isMuted && !isPracticeMode) {
-        if (isRepeatedNote) {
-          // For repeated notes, add a brief gap for articulation
-          const articulationGap = Math.min(50, duration * 0.1); // 10% of duration or 50ms, whichever is smaller
-          const actualNoteDuration = duration - articulationGap;
-
-          // Stop the previous note first (if it's still playing)
-          stopNote(note);
-
-          // Small delay before playing the new note
-          setTimeout(() => {
-            playNote(note, actualNoteDuration);
-            setTimeout(() => stopNote(note), actualNoteDuration);
-          }, articulationGap);
-        } else {
-          // Normal note playing
-          playNote(note, duration);
-          setTimeout(() => stopNote(note), duration);
+  // Autoplay AudioContext state handler
+  useEffect(() => {
+    const checkSuspended = () => {
+      if (audioEngineRef.current) {
+        const state = audioEngineRef.current.audioContext.state;
+        if (state === 'suspended') {
+          addConsoleLog('system', '⚠️ Audio Engine is suspended by browser autoplay policy. Click anywhere or press a piano key to enable sound!');
         }
       }
+    };
+    const timer = setTimeout(checkSuspended, 1000);
+    return () => clearTimeout(timer);
+  }, [audioEngineRef, addConsoleLog]);
 
-      noteIndex++;
-      songTimeoutRef.current = window.setTimeout(playNextNote, duration);
+  useEffect(() => {
+    const resumeAudio = () => {
+      if (audioEngineRef.current) {
+        audioEngineRef.current.resumeContext().then(() => {
+          if (audioEngineRef.current?.audioContext.state === 'running') {
+            addConsoleLog('system', '🔊 Audio Engine is active and running.');
+            window.removeEventListener('click', resumeAudio);
+            window.removeEventListener('keydown', resumeAudio);
+          }
+        });
+      }
     };
 
-    playNextNote();
-  }, [playNote, stopNote, isMuted, isPracticeMode, metronomeBPM]);
+    window.addEventListener('click', resumeAudio);
+    window.addEventListener('keydown', resumeAudio);
+    return () => {
+      window.removeEventListener('click', resumeAudio);
+      window.removeEventListener('keydown', resumeAudio);
+    };
+  }, [audioEngineRef, addConsoleLog]);
+
+  // Practice mode skips rest notes automatically
+  useEffect(() => {
+    if (isPracticeMode && compiledSongData) {
+      const song = compiledSongData;
+      if (currentNoteIndex < song.notes.length) {
+        const currentNote = song.notes[currentNoteIndex];
+        if (currentNote === 'rest') {
+          const beatDuration = song.durations[currentNoteIndex];
+          const restDurationMs = beatDuration * (60 / metronomeBPM) * 1000;
+          const timer = setTimeout(() => {
+            setCurrentNoteIndex(prev => prev + 1);
+          }, restDurationMs);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [currentNoteIndex, isPracticeMode, compiledSongData, metronomeBPM]);
+
+  // Load initial code when currentSong changes
+  useEffect(() => {
+    if (currentSong && sampleSongs[currentSong]) {
+      const song = sampleSongs[currentSong];
+
+      // Load raw lines for multi-track notation or compile arrays for standard format
+      if (song.notes.length > 0 && song.notes[0].startsWith('T')) {
+        setCode(song.notes.join('\n'));
+      } else {
+        const notationStr = convertSongToNotation(song.notes, song.durations);
+        setCode(notationStr);
+      }
+      addConsoleLog('system', `Loaded song workspace: ${currentSong}`);
+    }
+  }, [currentSong, addConsoleLog]);
+
+  // Play compiled song sequence
+  const playSong = useCallback((compiled: any) => {
+    setIsPlaying(true);
+    setCurrentNoteIndex(0);
+    setTrackNoteIndices({});
+
+    const beatDurationMs = (60 / metronomeBPM) * 1000;
+    addConsoleLog('system', `Starting multi-track playback...`);
+
+    const timeouts: number[] = [];
+
+    const enabledTracks = compiled.tracks.filter((t: any) => t.enabled !== false);
+    const disabledTracks = compiled.tracks.filter((t: any) => t.enabled === false);
+    if (disabledTracks.length > 0) {
+      const skippedIds = disabledTracks.map((t: any) => t.id).join(', ');
+      addConsoleLog('system', `Skipping ${disabledTracks.length} disabled track(s): ${skippedIds}`);
+    }
+    addConsoleLog('system', `Playing ${enabledTracks.length} active track(s)...`);
+
+
+    // Schedule note events for enabled tracks only
+    compiled.tracks.forEach((track: any) => {
+      if (track.enabled === false) return; // Skip disabled tracks
+
+      track.notes.forEach((noteEvent: any) => {
+        const playTimeMs = noteEvent.beatOffset * beatDurationMs;
+        const durationMs = noteEvent.duration * beatDurationMs;
+
+        // Schedule ALL notes (including rests) so the visual cursor stays in sync
+        const onTimeout = window.setTimeout(() => {
+          // Update per-track note index for visual highlighting on ALL tracks
+          setTrackNoteIndices(prev => ({ ...prev, [track.id]: noteEvent.noteIndex }));
+
+          // Also keep T1 in sync for practice mode
+          if (track.id === 'T1') {
+            setCurrentNoteIndex(noteEvent.noteIndex);
+          }
+
+          // Play audio and simulate keyboard press only for non-rest notes
+          if (noteEvent.note !== 'rest') {
+            const normalized = normalizeNote(noteEvent.note);
+            
+            // Press the key visually
+            setActiveNotes(prev => new Set(prev).add(normalized));
+
+            if (!isMuted) {
+              audioEngineRef.current?.playNote(noteEvent.note, 0.7, durationMs, track.synthType);
+            }
+
+            // Release the key visually slightly before the next note starts (articulation gap)
+            // This ensures repeated consecutive notes trigger distinct down/up animations
+            const visualHoldTime = Math.max(30, durationMs - 45);
+            const offTimeout = window.setTimeout(() => {
+              setActiveNotes(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(normalized);
+                return newSet;
+              });
+            }, visualHoldTime);
+            
+            timeouts.push(offTimeout);
+          }
+        }, playTimeMs);
+
+        timeouts.push(onTimeout);
+      });
+    });
+
+    // Schedule end of song event (maximum length across enabled tracks)
+    const maxLengthBeats = compiled.tracks.reduce((max: number, track: any) => {
+      if (track.enabled === false) return max; // Ignore disabled tracks
+      const trackLength = track.notes.reduce((sum: number, n: any) => sum + n.duration, 0);
+      return Math.max(max, trackLength);
+    }, 0);
+
+    const endTimeout = window.setTimeout(() => {
+      setIsPlaying(false);
+      setCurrentNoteIndex(0);
+      setTrackNoteIndices({});
+      setActiveNotes(new Set()); // Clear any stuck active notes
+      addConsoleLog('system', 'Playback finished successfully.');
+    }, maxLengthBeats * beatDurationMs);
+
+    timeouts.push(endTimeout);
+
+    playbackTimeoutsRef.current = timeouts;
+  }, [audioEngineRef, isMuted, metronomeBPM, addConsoleLog]);
 
   const handleTogglePlay = () => {
     if (isPlaying) {
-      // Stop current song
-      if (songTimeoutRef.current) {
-        clearTimeout(songTimeoutRef.current);
+      if (playbackTimeoutsRef.current) {
+        playbackTimeoutsRef.current.forEach(clearTimeout);
+        playbackTimeoutsRef.current = [];
       }
       setIsPlaying(false);
       setIsPracticeMode(false);
       setCurrentNoteIndex(0);
-    } else if (currentSong) {
-      // Resume or restart current song
+      setTrackNoteIndices({});
+      setActiveNotes(new Set()); // Clear any stuck active notes
+      if (audioEngineRef.current) {
+        audioEngineRef.current.stopAllNotes();
+      }
+      addConsoleLog('system', 'Playback stopped.');
+    } else {
+      const result = compileNotation(code, synthType);
+      if (result.error) {
+        addConsoleLog('error', `Compile failed: ${result.error.message}`);
+        return;
+      }
       setIsPracticeMode(false);
-      playSong(sampleSongs[currentSong]);
+      playSong(result);
     }
   };
 
@@ -294,24 +440,25 @@ function App() {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
 
-    if (newMutedState && currentSong) {
-      // Entering practice mode
+    if (newMutedState && compiledSongData) {
       setIsPracticeMode(true);
       setIsPlaying(false);
       setCurrentNoteIndex(0);
-      if (songTimeoutRef.current) {
-        clearTimeout(songTimeoutRef.current);
+      if (playbackTimeoutsRef.current) {
+        playbackTimeoutsRef.current.forEach(clearTimeout);
+        playbackTimeoutsRef.current = [];
       }
+      addConsoleLog('system', 'Practice Mode enabled. Play highlighted notes to advance!');
     } else {
-      // Exiting practice mode
       setIsPracticeMode(false);
+      addConsoleLog('system', 'Listen Mode enabled.');
     }
   };
 
   const handleSongSelect = (songName: string) => {
-    // Stop any currently playing song
-    if (songTimeoutRef.current) {
-      clearTimeout(songTimeoutRef.current);
+    if (playbackTimeoutsRef.current) {
+      playbackTimeoutsRef.current.forEach(clearTimeout);
+      playbackTimeoutsRef.current = [];
     }
     setIsPlaying(false);
     setCurrentNoteIndex(0);
@@ -319,263 +466,288 @@ function App() {
     setCurrentSong(songName);
   };
 
+  const handleNewSong = () => {
+    if (playbackTimeoutsRef.current) {
+      playbackTimeoutsRef.current.forEach(clearTimeout);
+      playbackTimeoutsRef.current = [];
+    }
+    setIsPlaying(false);
+    setCurrentNoteIndex(0);
+    setIsPracticeMode(false);
+    setCurrentSong('');
+    setCode('// Write your new melody here\n// Use format: C4/1 D4/1 E4/1 C4/1\n\n');
+    addConsoleLog('system', 'Created new empty song workspace.');
+  };
+
+  const handleToggleRecord = () => {
+    if (isRecording) {
+      midiRecorderRef.current.stop();
+      setIsRecording(false);
+      addConsoleLog('system', 'MIDI recording complete.');
+    } else {
+      setIsRecording(true);
+      addConsoleLog('system', `Recording started (Metronome: ${metronomeBPM} BPM). Play on keyboard...`);
+      midiRecorderRef.current.start(metronomeBPM, (token) => {
+        setCode(prev => {
+          const trimmed = prev.trim();
+          const lines = trimmed.split('\n');
+          const lastLine = lines[lines.length - 1] || '';
+          const tokensInLastLine = lastLine.split(/\s+/).filter(Boolean);
+
+          if (tokensInLastLine.length >= 8) {
+            return trimmed + '\n' + token;
+          }
+          return prev ? trimmed + ' ' + token : token;
+        });
+      });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-2 py-2 flex flex-col min-h-screen">
-        {/* Header */}
-        <div className="text-center mb-2">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Music className="w-5 h-5 text-purple-400" />
-            <h1 className="text-xl font-bold text-white">NoteFlow</h1>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased">
+      {/* Top Header */}
+      <header className="bg-slate-900 border-b border-slate-800/80 px-6 py-4 flex items-center justify-between shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <Activity className="w-5 h-5 text-white" />
           </div>
-          <p className="text-xs text-purple-200">Play music using your computer keyboard</p>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-300">
+              NoteFlow Studio
+            </h1>
+            <p className="text-[10px] text-purple-300 font-mono tracking-wider uppercase">
+              MIDI Synthesizer IDE v2.0
+            </p>
+          </div>
         </div>
 
-        {/* Mobile Controls Toggle */}
-        <div className="lg:hidden mb-2">
-          <button
-            onClick={() => setShowMobileControls(!showMobileControls)}
-            className="w-full p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center gap-2"
-          >
-            {showMobileControls ? (
-              <>
-                <EyeOff className="w-4 h-4" />
-                Hide Controls
-              </>
-            ) : (
-              <>
-                <Eye className="w-4 h-4" />
-                Show Controls
-              </>
-            )}
-          </button>
+        {/* Global Stats Bar */}
+        <div className="flex items-center gap-6 font-mono text-[11px] text-slate-400">
+          <div className="hidden sm:flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span>Synthesizer: ACTIVE</span>
+          </div>
+          <div className="hidden md:block">
+            <span>Latency: ~2.4ms</span>
+          </div>
+          <div>
+            <span>Host: GH Pages</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Studio Body Layout */}
+      <main className={`flex-1 p-4 flex flex-col gap-4 overflow-hidden min-h-0 xl:grid ${staffExpanded ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
+
+        {/* Left Column - Melodies Explorer & ADSR Panel */}
+        <div className="xl:col-span-1 flex flex-col gap-4 min-h-0 overflow-y-auto">
+          <MelodyExplorer
+            currentSong={currentSong}
+            onSongSelect={handleSongSelect}
+            onNewSong={handleNewSong}
+          />
+
+          <SynthSettings
+            synthType={synthType}
+            setSynthType={setSynthType}
+            attack={attack}
+            setAttack={setAttack}
+            decay={decay}
+            setDecay={setDecay}
+            sustain={sustain}
+            setSustain={setSustain}
+            release={release}
+            setRelease={setRelease}
+            reverbLevel={reverbLevel}
+            setReverbLevel={setReverbLevel}
+            volume={volume}
+            setVolume={setVolume}
+            onReset={handleResetSynth}
+          />
         </div>
 
-        {/* Main Content - Responsive Layout */}
-        <div className="flex-1 flex flex-col lg:grid lg:grid-cols-3 gap-2 min-h-0">
-          {/* Left Column - Controls and Songs (Desktop) */}
-          <div className="hidden lg:flex flex-col space-y-3">
-            {/* Desktop Controls */}
-            <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-3">
-              <div className="grid grid-cols-2 gap-3">
-                {/* Volume Control */}
-                <div>
-                  <label className="block text-xs font-medium text-purple-300 mb-1">
-                    <div className="flex items-center gap-1">
-                      <Volume2 className="w-3 h-3" />
-                      Vol: {Math.round(volume * 100)}%
-                    </div>
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={volume}
-                    onChange={(e) => setVolume(parseFloat(e.target.value))}
-                    className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                  />
-                </div>
+        {/* Center Panel (xl:col-span-2) - Code Editor & MIDI Console */}
+        <div className="xl:col-span-2 flex flex-col gap-4 min-h-0">
+          <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+            {/* Note Editor Workspace */}
+            <div className="flex-1 min-h-[300px] flex flex-col">
+              <NoteEditor
+                code={code}
+                onCodeChange={setCode}
+                isPlaying={isPlaying}
+                isRecording={isRecording}
+                onTogglePlay={handleTogglePlay}
+                onToggleRecord={handleToggleRecord}
+                onClear={handleNewSong}
+                bpm={metronomeBPM}
+                onBpmChange={setMetronomeBPM}
+                isMetronomeOn={isMetronomeOn}
+                onToggleMetronome={() => setIsMetronomeOn(!isMetronomeOn)}
+                currentSongName={currentSong}
+                aiCollapsed={aiCollapsed}
+                onToggleAi={() => setAiCollapsed(!aiCollapsed)}
+              />
+            </div>
 
-                {/* Metronome Control */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-medium text-purple-300 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {metronomeBPM} BPM
-                    </label>
-                    <button
-                      onClick={() => setIsMetronomeOn(!isMetronomeOn)}
-                      className={`
-                        px-2 py-0.5 rounded text-xs font-medium transition-all duration-200
-                        ${isMetronomeOn
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-slate-600 hover:bg-slate-500 text-slate-200'
-                        }
-                      `}
-                    >
-                      {isMetronomeOn ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                  <input
-                    type="range"
-                    min="40"
-                    max="240"
-                    step="5"
-                    value={metronomeBPM}
-                    onChange={(e) => setMetronomeBPM(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                    disabled={!isMetronomeOn}
-                  />
-                  {isMetronomeOn && (
-                    <div className="text-xs text-green-400 mt-0.5">
-                      {isPlaying ? "• Synced to song" : "• Ready"}
-                    </div>
-                  )}
-                </div>
+            {/* AI Assistant Sidebar (Beside the Workspace) */}
+            <div 
+              style={{ transition: 'all 300ms ease' }}
+              className={`bg-slate-900 border border-slate-850 rounded-xl flex flex-col shadow-lg overflow-hidden flex-shrink-0 ${
+                aiCollapsed ? 'w-0 border-none opacity-0 pointer-events-none' : 'w-full lg:w-80 opacity-100'
+              }`}
+            >
+              <div className="bg-slate-950 px-4 py-2 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
+                <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-purple-400 font-sans">🤖</span> AI Assistant
+                </h3>
+                <button 
+                  onClick={() => setAiCollapsed(true)} 
+                  className="text-slate-500 hover:text-white transition-colors text-base font-bold leading-none px-1"
+                  title="Collapse AI Assistant"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
+                <AIAssistant
+                  code={code}
+                  onCodeChange={setCode}
+                  addConsoleLog={addConsoleLog}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Collapsible MIDI Event Console */}
+          <MidiConsole
+            logs={logs}
+            onClear={() => setLogs([])}
+            midiConnected={midiConnected}
+            midiDeviceName={midiDeviceName}
+            collapsed={consoleCollapsed}
+            onToggleCollapse={() => setConsoleCollapsed(!consoleCollapsed)}
+          />
+        </div>
+
+        {/* Right Panel - Sheet Staff Visualizer (expands to col-span-2 when staffExpanded) */}
+        <div className={`${staffExpanded ? 'xl:col-span-2' : 'xl:col-span-1'} flex flex-col gap-4 min-h-0 overflow-y-auto`}>
+          <div className="bg-slate-900 border border-slate-850 rounded-xl p-4 flex flex-col shadow-lg flex-1 min-h-[350px]">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">
+                Staff Preview
+              </h3>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setStaffExpanded(prev => !prev)}
+                  title={staffExpanded ? 'Collapse panel' : 'Expand panel'}
+                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-xs font-mono border border-slate-700"
+                >
+                  {staffExpanded ? '⇥' : '⇤'}
+                </button>
+                <button
+                  onClick={() => setStaffFullscreen(prev => !prev)}
+                  title="Fullscreen"
+                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-xs font-mono border border-slate-700"
+                >
+                  ⛶
+                </button>
               </div>
             </div>
 
-            {/* Sample Songs */}
-            <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-xl p-3 flex-1 min-h-0">
-              <h3 className="text-sm font-semibold text-white mb-2 text-center">Sample Songs</h3>
-
-              <div className="space-y-1.5 max-h-full overflow-y-auto">
-                {Object.keys(sampleSongs).map(songName => (
-                  <button
-                    key={songName}
-                    onClick={() => handleSongSelect(songName)}
-                    className={`
-                      w-full p-2 rounded-lg font-medium transition-all duration-200 text-sm
-                      ${currentSong === songName
-                        ? 'bg-emerald-600 text-white shadow-lg'
-                        : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                      }
-                    `}
-                  >
-                    <span className="capitalize">{songName.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Keyboard Settings */}
-            <div className="mt-auto">
-              <KeyboardSettings
-                mapping={keyboardMapping}
-                onMappingChange={setKeyboardMapping}
+            <div className="flex-1 min-h-0 relative">
+              <MusicalScore
+                currentSong={currentSong}
+                isPlaying={isPlaying}
+                isMuted={isMuted}
+                isPracticeMode={isPracticeMode}
+                currentNoteIndex={currentNoteIndex}
+                trackNoteIndices={trackNoteIndices}
+                onTogglePlay={handleTogglePlay}
+                onToggleMute={handleToggleMute}
+                onShowHint={() => setShowHint(true)}
+                songData={compiledSongData}
+                keyboardMapping={keyboardMapping}
+                showHint={showHint}
+                onCloseHint={() => setShowHint(false)}
               />
             </div>
           </div>
 
-          {/* Mobile Controls (shown when toggled) */}
-          {showMobileControls && (
-            <div className="lg:hidden space-y-2 mb-2">
-              {/* Volume and Metronome Controls */}
-              <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg p-2">
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Volume Control */}
-                  <div>
-                    <label className="block text-xs font-medium text-purple-300 mb-1">
-                      <div className="flex items-center gap-1">
-                        <Volume2 className="w-3 h-3" />
-                        Vol: {Math.round(volume * 100)}%
-                      </div>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={volume}
-                      onChange={(e) => setVolume(parseFloat(e.target.value))}
-                      className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                  </div>
-
-                  {/* Metronome Control */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-medium text-purple-300 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {metronomeBPM}
-                      </label>
-                      <button
-                        onClick={() => setIsMetronomeOn(!isMetronomeOn)}
-                        className={`
-                          px-2 py-0.5 rounded text-xs font-medium transition-all duration-200
-                          ${isMetronomeOn
-                            ? 'bg-green-600 hover:bg-green-700 text-white'
-                            : 'bg-slate-600 hover:bg-slate-500 text-slate-200'
-                          }
-                        `}
-                      >
-                        {isMetronomeOn ? 'ON' : 'OFF'}
-                      </button>
-                    </div>
-                    <input
-                      type="range"
-                      min="40"
-                      max="240"
-                      step="5"
-                      value={metronomeBPM}
-                      onChange={(e) => setMetronomeBPM(parseInt(e.target.value))}
-                      className="w-full h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                      disabled={!isMetronomeOn}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Songs Section for Mobile */}
-              <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-lg p-2">
-                <h3 className="text-sm font-semibold text-white mb-2 text-center">Sample Songs</h3>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {Object.keys(sampleSongs).map(songName => (
-                    <button
-                      key={songName}
-                      onClick={() => handleSongSelect(songName)}
-                      className={`
-                        p-2 rounded-lg font-medium transition-all duration-200 text-xs
-                        ${currentSong === songName
-                          ? 'bg-emerald-600 text-white shadow-lg'
-                          : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                        }
-                      `}
-                    >
-                      <span className="capitalize">{songName.replace(/([A-Z])/g, ' $1').trim()}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Musical Score - Responsive Column */}
-          <div className="lg:col-span-2 flex-1 min-h-0">
-            <MusicalScore
-              currentSong={currentSong}
-              isPlaying={isPlaying}
-              isMuted={isMuted}
-              isPracticeMode={isPracticeMode}
-              currentNoteIndex={currentNoteIndex}
-              onTogglePlay={handleTogglePlay}
-              onToggleMute={handleToggleMute}
-              onShowHint={() => setShowHint(true)}
-              songData={currentSong ? {
-                ...sampleSongs[currentSong],
-                title: currentSong.replace(/([A-Z])/g, ' $1').trim()
-              } : undefined}
-              keyboardMapping={keyboardMapping}
-              showHint={showHint}
-              onCloseHint={() => setShowHint(false)}
+          <div className="bg-slate-900 border border-slate-850 rounded-xl p-3 shadow-lg">
+            <KeyboardSettings
+              mapping={keyboardMapping}
+              onMappingChange={setKeyboardMapping}
             />
           </div>
         </div>
 
-        {/* Piano Component - Always at bottom */}
-        <div className="mt-2">
+        {/* Fullscreen Staff Overlay */}
+        {staffFullscreen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex flex-col">
+            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900">
+              <h2 className="text-sm font-bold text-slate-200 font-mono uppercase tracking-wider">⚡ Staff Preview — Fullscreen</h2>
+              <button
+                onClick={() => setStaffFullscreen(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono border border-slate-700 transition-colors"
+              >
+                ✕ Exit Fullscreen
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden p-4">
+              <MusicalScore
+                currentSong={currentSong}
+                isPlaying={isPlaying}
+                isMuted={isMuted}
+                isPracticeMode={isPracticeMode}
+                currentNoteIndex={currentNoteIndex}
+                trackNoteIndices={trackNoteIndices}
+                onTogglePlay={handleTogglePlay}
+                onToggleMute={handleToggleMute}
+                onShowHint={() => setShowHint(true)}
+                songData={compiledSongData}
+                keyboardMapping={keyboardMapping}
+                showHint={showHint}
+                onCloseHint={() => setShowHint(false)}
+              />
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Interactive Piano (Always at bottom) */}
+      <footer className="bg-slate-900 border-t border-slate-800/80 p-4 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4 px-2">
+            <div className="flex items-center gap-2">
+              <Volume2 className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-semibold text-slate-300 font-mono">Master Volume:</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={volume}
+                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                className="w-24 h-1 bg-slate-800 hover:bg-slate-700/80 rounded-lg appearance-none cursor-pointer accent-purple-500 transition-colors"
+              />
+              <span className="text-[11px] text-slate-400 font-mono">{Math.round(volume * 100)}%</span>
+            </div>
+
+            <div className="flex items-center gap-4 text-[10px] text-slate-500 font-mono">
+              <div>Hold <kbd className="bg-slate-950 border border-slate-800 text-slate-400 px-1 py-0.5 rounded text-[9px]">Shift</kbd> for Sharps (#)</div>
+              <div>Hold <kbd className="bg-slate-950 border border-slate-800 text-slate-400 px-1 py-0.5 rounded text-[9px]">Alt</kbd> for Flats (b)</div>
+              <div className="hidden sm:block text-purple-400">Interact with on-screen keys or plug in MIDI hardware</div>
+            </div>
+          </div>
+
           <Piano
             activeNotes={activeNotes}
-            onNotePlay={playNote}
-            onNoteStop={stopNote}
+            onNotePlay={(note) => playNote(note, undefined, 0.7, 'Virtual Key')}
+            onNoteStop={(note) => stopNote(note, 'Virtual Key')}
           />
         </div>
-
-        {/* Keyboard Settings for Mobile */}
-        <div className="lg:hidden mt-2">
-          <KeyboardSettings
-            mapping={keyboardMapping}
-            onMappingChange={setKeyboardMapping}
-          />
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-2 text-purple-300 text-xs">
-          <p className="hidden sm:block">Use your keyboard to play notes • Hold Shift for sharps • Hold Alt/Option for flats</p>
-          <p className="sm:hidden">Tap piano keys to play • Use keyboard for desktop</p>
-        </div>
-      </div>
+      </footer>
     </div>
   );
 }

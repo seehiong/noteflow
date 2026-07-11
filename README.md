@@ -1,60 +1,65 @@
-# NoteFlow - MIDI Keyboard Player with Computer Key Mapping
+# NoteFlow - MIDI IDE and Keyboard Synthesizer
 
-## 🚀 [Live Demo](https://wondrous-conkies-5d34fe.netlify.app/)
+## 🚀 [Live Demo](https://seehiong.github.io/noteflow/)
 
-**Try it now!** Click the link above to start playing piano with your computer keyboard instantly - no installation required!
+**Try it now!** Click the link above to start writing, playing, and recording music in the browser - no installation required!
 
 ---
 
-A beautiful, interactive web-based piano application that lets you play music using your computer keyboard or mouse. Perfect for learning piano, practicing songs, and exploring musical creativity.
+A beautiful, interactive web-based **MIDI IDE (Integrated Development Environment)** and synthesizer that lets you compile, play, and record music notes using your computer keyboard, mouse, or hardware MIDI keyboards. Perfect for learning piano, composing melodies, and testing synthesizers.
 
 ![MIDI Keyboard Player](https://images.pexels.com/photos/164743/pexels-photo-164743.jpeg?auto=compress&cs=tinysrgb&w=1200&h=400&fit=crop)
 
+## 🖥️ JAMStack Architecture
+
+NoteFlow is built using the modern **JAMStack** (JavaScript, APIs, Markup) architecture:
+- **JavaScript (TypeScript & React 18)**: Powering the reactive layout, state management, note transcription, and sound design fully client-side.
+- **APIs**: Leverages native, client-only browser APIs including the **Web Audio API** for real-time sound synthesis (oscillators, reverb filters, envelope gains) and the **Web MIDI API** for interfacing directly with physical keyboards.
+- **Markup**: Compiled statically via **Vite** and served directly from **GitHub Pages** CDN edges. There is no active server-side runtime needed, ensuring low latency, high scalability, and simple hosting.
+
+---
+
 ## ✨ Features
 
-### 🎹 Virtual Piano
-- **88-key piano interface** with realistic white and black keys
-- **Visual feedback** with purple highlighting when keys are pressed
-- **Mouse interaction** - click keys to play notes
-- **Multiple octaves** spanning from C3 to C6
+### 💻 MIDI Code Editor (IDE) & Orchestrator
+- **NoteFlow Notation Language (NFN)**: Write notes using simple tokens like `C4/1` or `rest/0.5`.
+- **🎼 Multi-Track Orchestration**: Write up to 16 parallel tracks playing together. Prefix lines with a track ID and an instrument/synth type using `synth=` or `instrument=` (e.g., `T1 instrument=flute C4/1` and `T2 synth=cello C3/2` play melody and bassline in parallel).
+  - **Supported Instruments**: `piano`, `organ`, `flute`, `cello`, `sine`, `triangle`, `square`, `sawtooth`, `drum`.
+- **Live Compiler**: Automatically compiles code as you type and renders track `T1`'s melody on the visual staff.
+- **File I/O Export**: Import local files using the **Upload (.noteflow)** button or export your compositions using the **Download (.noteflow)** button.
+- **Code Validation**: Displays helpful compiler status alerts and points out syntax errors in real-time.
+- **Save Workspace**: Automatically saves your custom edits to browser local storage.
 
-### ⌨️ Computer Keyboard Mapping
-- **Play with your keyboard** - no MIDI controller needed!
-- **Customizable key mapping** - assign any keyboard row to any octave
-- **Three keyboard rows** for different octaves:
-  - QWERTY row (default: Octave 3-4)
-  - ASDF row (default: Octave 4-5) 
-  - ZXCV row (default: Octave 5-6)
-- **Modifier keys**:
-  - Hold **Shift** for sharps (#)
-  - Hold **Ctrl** for flats (♭)
+### 🎛️ ADSR Synthesizer & Sound Controls
+- **Waveform Selector & Instruments**: Choose wave shapes and instruments (Classic Harmonics Piano, Pipe Organ, Woodwind Flute, Bowed Cello, Sine, Triangle, Square, Sawtooth, and Synthesized Drums) for free play or text tracks.
+- **ADSR Envelope Controls**: Fine-tune Attack time, Decay time, Sustain multiplier, and Release time to customize the instrument envelope.
+- **Reverb Effect**: An impulse response convolver node simulation to add spatial echo and depth.
+- **Parameters Tooltips & Reset**: Hover over the `(i)` icons next to controls to read descriptions, or click **Reset** to restore default parameters.
 
-### 🎵 Sample Songs & Practice Mode
-- **5 built-in songs**:
-  - Happy Birthday
-  - Twinkle Twinkle Little Star
-  - Mary Had a Little Lamb
-  - Ode to Joy
-  - Jingle Bells
+### 🥁 Synthesized Drum Kit
+- **Native Drum Engine**: Synthesizes realistic percussion sounds fully client-side:
+  - **Bass Drum (BD/Kick):** Dynamic frequency drop from 150Hz.
+  - **Snare Drum (SD/Snare):** Fuses a triangle core body note with highpass-filtered white noise.
+  - **Hi-Hat (HH/Hihat):** Trigger-and-forget short noise bursts.
+- **Interactive Drum Pad:** Select "Synthesized Drum Kit" from the waveform dropdown to play drums live using piano or computer keys.
 
-### 🎯 Interactive Learning
-- **Listen Mode**: Hear songs play automatically
-- **Practice Mode**: Interactive learning with note-by-note guidance
-- **Musical Score Display**: See notes in standard musical notation
-- **Progress Tracking**: Visual progress bar and note counter
-- **Auto-scroll**: Keeps current note centered in the score view
+### 🎙️ Live MIDI Recorder & Quantizer
+- **Recording Engine**: Record notes played in real-time via virtual keys, QWERTY keys, or external hardware.
+- **Smart Quantization**: Automatically rounds note durations to the nearest common values (`0.25`, `0.5`, `1`, `1.5`, `2`, `4`).
+- **Rest Auto-Detection**: Detects pauses, appending rest commands (e.g. `rest/0.5`) in the code workspace.
 
-### 🔧 Advanced Features
-- **Volume Control**: Adjustable audio volume
-- **Keyboard Settings**: Fully customizable key-to-note mapping
-- **Audio Engine**: Web Audio API for high-quality sound synthesis
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
+### ⌨️ Web MIDI & Keyboard Mapping
+- **Web MIDI API Support**: Plug in physical MIDI keyboards/electronic pianos. They are automatically mapped, logged, and active.
+- **Developer Event Console**: Live ticker output showing Note On, Note Off, and Velocity events with origin tags (keystroke, virtual press, hardware).
+- **QWERTY Mapping**: Play scales using standard keyboard rows (QWERTY, ASDF, ZXCV). Hold **Shift** for sharps (#) and **Alt/Option** for flats (♭).
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (version 16 or higher)
-- Modern web browser with Web Audio API support
+- Node.js (version 18 or higher)
+- A modern browser supporting Web Audio and Web MIDI APIs (e.g., Google Chrome, Microsoft Edge, Opera)
 
 ### Installation
 
@@ -75,152 +80,69 @@ A beautiful, interactive web-based piano application that lets you play music us
    ```
 
 4. **Open your browser**
-   Navigate to `http://localhost:5173` to start playing!
+   Navigate to `http://localhost:5173/noteflow/` to launch the IDE!
 
-## 🎮 How to Use
+---
 
-### Basic Playing
-1. **Use your keyboard**: Press Q, W, E, R, T, Y, U, I for a C major scale
-2. **Click the piano**: Use your mouse to click virtual piano keys
-3. **Adjust volume**: Use the volume slider to control audio level
+## 🎮 How to Use the IDE
 
-### Learning Songs
-1. **Select a song**: Click any song button in the left sidebar
-2. **Choose mode**:
-   - **Listen Mode**: Click "Play" to hear the song
-   - **Practice Mode**: Click the mute button to enter interactive practice
-3. **Follow along**: In practice mode, play the highlighted red notes to progress
+### Writing and Playing Multi-Track Melodies
+1. Choose **Mini Symphony**, **Rock Twinkle**, **Chamber Duet**, or **Jingle Bells Metal** from the Melodies Explorer in the sidebar.
+2. Examine the parallel track structures:
+   - Lines start with a track header using either `synth=` or `instrument=` (e.g., `T1 instrument=flute`, `T2 synth=cello`, `T3 synth=drum`).
+   - Note tokens are separated by spaces: `[Pitch]/[Beats]` (e.g., `C4/1.5`, `rest/0.5`, `BD/1`).
+3. Click **Compile & Play** to compile and orchestrate all tracks in parallel.
+4. Alter synthesizer ADSR sliders to mold sound waves in real-time. Hover over the info `(i)` icons next to sliders to read parameter guides, or click **Reset** to restore defaults.
+5. Export your composition using **Download** (saved as `.noteflow`), or load custom files using **Upload**.
 
-### Getting Help
-- **Stuck on a note?** Click the bouncing red note to see which keyboard keys to press
-- **Need different mapping?** Click "Keyboard Settings" to customize your layout
+### Recording Live Music
+1. Turn on the **Metronome** and set your desired **BPM**.
+2. Click the **Record MIDI** button.
+3. Play notes on your QWERTY keyboard, on-screen keys, or external MIDI controller.
+4. NoteFlow will automatically append quantized tokens (e.g., `E4/0.5`, `rest/1`) into the editor.
+5. Click **Record** again to stop. You can now edit, download, and replay your performance!
 
-### Keyboard Mapping Customization
-1. Click **"Keyboard Settings"** button
-2. **Set octaves** for each keyboard row:
-   - QWERTY row → Choose base octave (1-7)
-   - ASDF row → Choose base octave (1-7)
-   - ZXCV row → Choose base octave (1-7)
-3. **Preview mapping** - see exactly which keys play which notes
-4. **Save settings** or reset to defaults
+---
 
-## 🎼 Musical Features
+## 🛠️ Project Structure
 
-### Note System
-- **Standard notation**: Uses traditional note names (C, D, E, F, G, A, B)
-- **Solfege support**: Shows do, re, mi, fa, so, la, ti for educational purposes
-- **Octave range**: Covers multiple octaves for full musical expression
-
-### Audio Engine
-- **Web Audio API**: High-quality, low-latency audio synthesis
-- **Sine wave oscillators**: Clean, pure tones perfect for learning
-- **Real-time processing**: Immediate audio feedback with no delay
-
-### Practice Mode Benefits
-- **Note-by-note learning**: Progress only when you play the correct note
-- **Visual guidance**: Clear highlighting of current note to play
-- **Audio feedback**: Hear your playing to develop ear training
-- **Completion tracking**: See your progress through each song
-
-## 🛠️ Technical Stack
-
-- **React 18** with TypeScript for robust component architecture
-- **Vite** for fast development and building
-- **Tailwind CSS** for beautiful, responsive styling
-- **Lucide React** for crisp, modern icons
-- **Web Audio API** for professional audio synthesis
-- **ESLint** for code quality and consistency
-
-## 🎨 Design Philosophy
-
-- **Apple-level aesthetics**: Clean, sophisticated visual design
-- **Intuitive UX**: Natural interactions that feel familiar
-- **Responsive layout**: Optimized for all screen sizes
-- **Accessibility**: High contrast ratios and keyboard navigation
-- **Performance**: Smooth animations and responsive audio
-
-## 📱 Browser Compatibility
-
-- **Chrome/Chromium**: Full support
-- **Firefox**: Full support
-- **Safari**: Full support
-- **Edge**: Full support
-
-*Note: Requires Web Audio API support (available in all modern browsers)*
-
-## 🎯 Learning Tips
-
-### For Beginners
-1. **Start with simple songs** like "Twinkle Twinkle Little Star"
-2. **Use practice mode** to learn note by note
-3. **Click notes for hints** when you're stuck
-4. **Customize keyboard mapping** to match your comfort level
-
-### For Advanced Users
-1. **Try complex songs** like "Ode to Joy"
-2. **Use different octaves** by customizing keyboard rows
-3. **Practice with sharps and flats** using Shift and Ctrl modifiers
-4. **Challenge yourself** by turning off auto-scroll
-
-## 🔧 Development
-
-### Available Scripts
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
-### Project Structure
 ```
 src/
-├── components/          # React components
-│   ├── Piano.tsx       # Virtual piano interface
-│   ├── MusicalScore.tsx # Musical notation display
-│   ├── KeyboardSettings.tsx # Keyboard mapping configuration
-│   ├── KeyboardHint.tsx # Practice mode hints
-│   └── SampleSongs.tsx # Song selection (removed in compact layout)
-├── utils/              # Utility functions
-│   ├── AudioEngine.ts  # Web Audio API wrapper
-│   └── noteMapping.ts  # Keyboard-to-note mapping logic
-├── data/               # Static data
-│   └── sampleSongs.ts  # Song definitions
-└── App.tsx            # Main application component
+├── components/          
+│   ├── Piano.tsx            # Interactive virtual piano keys
+│   ├── MusicalScore.tsx     # Scrolling sheet music staff visualizer (melodic track T1)
+│   ├── KeyboardSettings.tsx # QWERTY keyboard octave layout settings
+│   ├── SynthSettings.tsx    # Waveform and ADSR parameter sliders card
+│   ├── MelodyExplorer.tsx   # Sidebar built-in songs list card
+│   ├── NoteEditor.tsx       # Notation compiler editor & validation console
+│   └── MidiConsole.tsx      # Terminal event logs panel
+├── hooks/              
+│   ├── useSynth.ts          # State and hook wrapper for AudioEngine setup
+│   ├── useWebMidi.ts        # Browser external midi inputs handler
+│   └── useQwertyKeyboard.ts # Window keypress layout mappings
+├── utils/              
+│   ├── AudioEngine.ts       # Web Audio synthesizer with ADSR, Reverb, and Percussion Kit
+│   ├── MidiRecorder.ts      # Live note duration quantization engine
+│   ├── musicUtils.ts        # Pitch enharmonic converters
+│   └── noteMapping.ts       # Computer QWERTY mapping configurations
+├── data/               
+│   └── sampleSongs.ts       # Built-in melodies
+└── App.tsx                  # Main IDE layout dashboard
 ```
 
-## 🎵 Adding New Songs
-
-To add your own songs, edit `src/data/sampleSongs.ts`:
-
-```typescript
-export const sampleSongs = {
-  "Your Song Name": {
-    notes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
-    durations: [1, 1, 1, 1, 1, 1, 1, 2] // In beats
-  }
-};
-```
+---
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+4. Submit a pull request
 
 ## 📄 License
 
 This project is open source and available under the MIT License.
 
-## 🙏 Acknowledgments
-
-- **Web Audio API** for enabling browser-based audio synthesis
-- **React community** for excellent development tools
-- **Tailwind CSS** for rapid, beautiful styling
-- **Lucide** for clean, consistent icons
-
 ---
 
-**Happy Playing! 🎹✨**
-
-*Transform your computer into a musical instrument and start your piano learning journey today!*
+**Happy Coding & Playing! 🎹🚀**

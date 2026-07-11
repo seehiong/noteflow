@@ -1,4 +1,4 @@
-// src/components/Piano.ts
+//src/components/Piano.ts
 
 import React, { useMemo } from 'react';
 import { normalizeNote } from '../utils/musicUtils';

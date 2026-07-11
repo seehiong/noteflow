@@ -1,4 +1,4 @@
-// src/utils/musicUtils.ts
+//src/utils/musicUtils.ts
 
 const ENHARMONIC_MAP: { [key: string]: string } = {
   'Bb': 'A#',
