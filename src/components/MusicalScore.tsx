@@ -176,24 +176,6 @@ export const MusicalScore: React.FC<MusicalScoreProps> = ({
     return 70 + (octaveOffset + noteOffset) * 6;
   };
 
-  const getLedgerLines = (note: string, top: number): number[] => {
-    if (note === 'rest' || /^(BD|SD|HH|KICK|SNARE|HIHAT)$/i.test(note)) return [];
-    const { base, octave } = parseNote(note);
-    const octaveNum = parseInt(octave);
-    const staffBottom = 68; const staffTop = 20; const spacing = 12;
-    const lines: number[] = [];
-    if (top > staffBottom) {
-      lines.push(staffBottom + spacing);
-      if (['A', 'G', 'F', 'E', 'D', 'C'].indexOf(base) >= 2 && octaveNum <= 3) lines.push(staffBottom + spacing * 2);
-      if (['F', 'E', 'D', 'C'].includes(base) && octaveNum <= 3) lines.push(staffBottom + spacing * 3);
-      if (['D', 'C'].includes(base) && octaveNum <= 3) lines.push(staffBottom + spacing * 4);
-    } else if (top < staffTop) {
-      lines.push(staffTop - spacing);
-      if (octaveNum >= 6) lines.push(staffTop - spacing * 2);
-    }
-    return lines;
-  };
-
   // ── Track Lane ────────────────────────────────────────────────────────────
 
   const renderTrackLane = (track: CompiledTrack, idx: number) => {

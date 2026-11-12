@@ -1,7 +1,7 @@
 //src/components/AIAssistant.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Key, Play, CornerDownLeft, Plus, Check } from 'lucide-react';
+import { Sparkles, Key, Plus, Check } from 'lucide-react';
 
 interface AIAssistantProps {
   code: string;

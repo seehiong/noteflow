@@ -23,6 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.certs/
+public/dev-rootCA.pem
+public/dev-rootCA.cer
 
 # Local Netlify folder
 .netlify

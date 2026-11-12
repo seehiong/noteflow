@@ -82,6 +82,21 @@ NoteFlow is built using the modern **JAMStack** (JavaScript, APIs, Markup) archi
 4. **Open your browser**
    Navigate to `http://localhost:5173/noteflow/` to launch the IDE!
 
+### Test on a phone over local HTTPS (Windows)
+
+To use Web Audio from a phone without browser certificate warnings, install [mkcert](https://github.com/FiloSottile/mkcert), then run these commands from the project folder in PowerShell. Replace `192.168.168.168` with your PC's current Wi-Fi IPv4 address:
+
+```powershell
+mkcert -install
+New-Item -ItemType Directory -Force .certs
+mkcert -cert-file .certs/dev-cert.pem -key-file .certs/dev-key.pem 192.168.168.168 localhost 127.0.0.1 ::1
+Copy-Item "$(mkcert -CAROOT)\rootCA.pem" public/dev-rootCA.pem
+openssl x509 -in public/dev-rootCA.pem -outform DER -out public/dev-rootCA.cer
+npm run dev:lan
+```
+
+On the iPhone, visit `https://<PC-WI-FI-IP>:5173/noteflow/dev-rootCA.cer` and accept Safari's warning just long enough to download the certificate. Install it from **Settings → Profile Downloaded**, then go to **Settings → General → About → Certificate Trust Settings** and enable full trust for the mkcert root. Finally, open `https://<PC-WI-FI-IP>:5173/noteflow/`. Keep the phone and PC on the same Wi-Fi network and allow Node.js through Windows Firewall on private networks. The `.certs` private key and generated CA files are excluded from Git.
+
 ---
 
 ## 🎮 How to Use the IDE
@@ -145,4 +160,4 @@ This project is open source and available under the MIT License.
 
 ---
 
-**Happy Coding & Playing! 🎹🚀**
+**Happy Coding & Playing! 🎹🚀**

@@ -32,9 +32,9 @@ export const sampleSongs: { [key: string]: { notes: string[]; durations: number[
   "Mini Symphony": {
     notes: [
       "T1 instrument=piano track=on E4/1 E4/1 F4/1 G4/1 G4/1 F4/1 E4/1 D4/1 C4/1 C4/1 D4/1 E4/1 E4/1.5 D4/0.5 D4/2 rest/1 E4/1 E4/1 F4/1 G4/1 G4/1 F4/1 E4/1 D4/1 C4/1 C4/1 D4/1 E4/1 D4/1.5 C4/0.5 C4/2",
-      "T2 synth=sawtooth track=on C3/2 E3/2 F3/2 G3/2 C3/2 E3/2 D3/2 C3/2",
-      "T3 synth=sine track=on C4/4 E4/4 F4/4 D4/4 C4/4 E4/4 F4/2 G4/2 E4/4",
-      "T4 synth=drum track=on C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/2"
+      "T2 synth=sawtooth track=on C3/2 E3/2 F3/2 G3/2 C3/2 E3/2 D3/2 C3/2 C3/2 E3/2 F3/2 G3/2 C3/2 E3/2 D3/2 C3/2",
+      "T3 synth=sine track=on C4/4 E4/4 F4/4 D4/4 C4/4 E4/4 F4/4 C4/4",
+      "T4 synth=drum track=on C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1 C2/1 F#2/1 D2/1 F#2/1"
     ],
     durations: []
   },
@@ -65,12 +65,11 @@ export const sampleSongs: { [key: string]: { notes: string[]; durations: number[
   },
   "First Contact (Sci-Fi)": {
     notes: [
-      "T1 synth=sine track=on rest/2 G5/0.5 rest/1.5 rest/2 D6/0.5 rest/1.5 rest/2 G5/0.5 rest/1.5 rest/1 D6/0.5 rest/0.5 G5/0.5 rest/1.5 C6/2 Bb5/2 G5/4 Ab5/2 G5/2 D5/4 rest/4 rest/4 rest/4 rest/4 C6/2 D6/2 Eb6/4 D6/2 C6/2 G5/4",
-      "T2 instrument=flute track=on rest/4 rest/4 rest/4 rest/4 G4/3 Bb4/1 C5/4 Eb5/3 D5/1 C5/2 G4/2 rest/4 rest/4 rest/4 rest/4 Eb5/8 D5/2 Eb5/2 C5/4",
-      "T3 instrument=violin track=on rest/4 rest/4 rest/4 rest/4 rest/4 rest/4 rest/4 rest/4 C5/2 F5/2 Eb5/3 D5/1 C5/2 Bb4/2 G4/4 G5/4 F5/2 Eb5/2 D5/2 Eb5/2 C5/4",
-      "T4 instrument=cello track=on C2/8 G2/8 C3/1 C3/1 G3/1 C3/1 C3/1 C3/1 G3/1 C3/1 C3/1 C3/1 G3/1 C3/1 C3/1 C3/1 G3/1 C3/1 Ab2/4 Bb2/4 C3/4 G2/4 Ab2/4 Bb2/4 C3/2 D3/2 C3/4",
-      "T5 synth=sawtooth track=on C2/8 C2/8 C2/8 C2/8 Ab2/4 Bb2/4 C2/4 G2/4 Ab2/4 Bb2/4 C2/8",
-      "T6 synth=drum track=on rest/4 rest/4 rest/4 rest/4 BD/2 BD/2 BD/2 BD/2 BD/2 BD/2 BD/2 BD/2 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/0.5 HH/0.5 BD/0.5 HH/0.5 SD/0.5 HH/0.5 BD/0.5 HH/0.5 BD/0.5 HH/0.5 BD/0.5 HH/0.5 SD/0.5 HH/0.5 BD/0.5 HH/0.5 BD/0.5 HH/0.5 BD/0.5 HH/0.5 SD/0.5 HH/0.5 BD/0.5 HH/0.5 SD/0.5 SD/0.5 SD/0.5 SD/0.5 BD/2"
+      "T1 synth=sawtooth track=on rest/4 G4/1.5 D5/0.5 C5/0.5 B4/0.5 A4/0.5 G5/1 D5/2 rest/2 C5/0.5 B4/0.5 C5/0.5 D5/0.5 A4/2 G4/4",
+      "T2 synth=sine track=on rest/4 G5/0.5 B5/0.5 D6/0.5 G6/0.5 rest/2 G5/0.5 B5/0.5 D6/0.5 G6/0.5 rest/2 E5/0.5 G5/0.5 C6/0.5 E6/0.5 rest/2 D5/0.5 F#5/0.5 A5/0.5 D6/0.5 G5/2",
+      "T3 synth=triangle track=on G2/4 G2/4 G2/4 G2/4 C3/4 C3/4 D3/4 G2/4",
+      "T4 synth=square track=on G3/0.5 D3/0.5 G3/0.5 D3/0.5 G3/0.5 D3/0.5 G3/0.5 D3/0.5 G3/0.5 D3/0.5 G3/0.5 D3/0.5 G3/0.5 D3/0.5 G3/0.5 D3/0.5 C3/0.5 G2/0.5 C3/0.5 G2/0.5 C3/0.5 G2/0.5 C3/0.5 G2/0.5 D3/0.5 A2/0.5 D3/0.5 A2/0.5 G2/2 G2/2",
+      "T5 synth=drum track=on rest/4 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/1 HH/0.5 HH/0.5 SD/1 HH/1 BD/2 BD/2"
     ],
     durations: []
   }

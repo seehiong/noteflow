@@ -86,7 +86,6 @@ function App() {
 
   const [keyboardMapping, setKeyboardMapping] = useState<KeyboardMapping>(generateDefaultKeyboardMapping);
 
-  const songTimeoutRef = useRef<number | null>(null);
   const playbackTimeoutsRef = useRef<number[]>([]);
   const midiRecorderRef = useRef(new MidiRecorder());
 
@@ -324,6 +323,9 @@ function App() {
 
   // Play compiled song sequence
   const playSong = useCallback((compiled: any) => {
+    // Resume synchronously from the play button's user gesture. Mobile browsers
+    // may reject audio that is only started later from scheduled timers.
+    void audioEngineRef.current?.resumeContext();
     setIsPlaying(true);
     setCurrentNoteIndex(0);
     setTrackNoteIndices({});
@@ -363,12 +365,12 @@ function App() {
           // Play audio and simulate keyboard press only for non-rest notes
           if (noteEvent.note !== 'rest') {
             const normalized = normalizeNote(noteEvent.note);
-            
+
             // Press the key visually
             setActiveNotes(prev => new Set(prev).add(normalized));
 
             if (!isMuted) {
-              audioEngineRef.current?.playNote(noteEvent.note, 0.7, durationMs, track.synthType);
+              audioEngineRef.current?.playNote(noteEvent.note, 0.7, durationMs, track.synthType, true, `${track.id}:${noteEvent.note}`);
             }
 
             // Release the key visually slightly before the next note starts (articulation gap)
@@ -381,7 +383,7 @@ function App() {
                 return newSet;
               });
             }, visualHoldTime);
-            
+
             timeouts.push(offTimeout);
           }
         }, playTimeMs);
@@ -506,7 +508,7 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased">
       {/* Top Header */}
-      <header className="bg-slate-900 border-b border-slate-800/80 px-6 py-4 flex items-center justify-between shadow-md">
+      <header className="bg-slate-900 border-b border-slate-800/80 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 shadow-md">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
             <Activity className="w-5 h-5 text-white" />
@@ -537,10 +539,10 @@ function App() {
       </header>
 
       {/* Main Studio Body Layout */}
-      <main className={`flex-1 p-4 flex flex-col gap-4 overflow-hidden min-h-0 xl:grid ${staffExpanded ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
+      <main className={`flex-1 p-3 sm:p-4 flex flex-col gap-4 overflow-visible xl:overflow-hidden min-h-0 xl:grid ${staffExpanded ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
 
         {/* Left Column - Melodies Explorer & ADSR Panel */}
-        <div className="xl:col-span-1 flex flex-col gap-4 min-h-0 overflow-y-auto">
+        <div className="xl:col-span-1 flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto">
           <MelodyExplorer
             currentSong={currentSong}
             onSongSelect={handleSongSelect}
@@ -590,18 +592,17 @@ function App() {
             </div>
 
             {/* AI Assistant Sidebar (Beside the Workspace) */}
-            <div 
+            <div
               style={{ transition: 'all 300ms ease' }}
-              className={`bg-slate-900 border border-slate-850 rounded-xl flex flex-col shadow-lg overflow-hidden flex-shrink-0 ${
-                aiCollapsed ? 'w-0 border-none opacity-0 pointer-events-none' : 'w-full lg:w-80 opacity-100'
-              }`}
+              className={`bg-slate-900 border border-slate-850 rounded-xl flex flex-col shadow-lg overflow-hidden flex-shrink-0 ${aiCollapsed ? 'w-0 border-none opacity-0 pointer-events-none' : 'w-full lg:w-80 opacity-100'
+                }`}
             >
               <div className="bg-slate-950 px-4 py-2 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
                 <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider flex items-center gap-1.5">
                   <span className="text-purple-400 font-sans">🤖</span> AI Assistant
                 </h3>
-                <button 
-                  onClick={() => setAiCollapsed(true)} 
+                <button
+                  onClick={() => setAiCollapsed(true)}
                   className="text-slate-500 hover:text-white transition-colors text-base font-bold leading-none px-1"
                   title="Collapse AI Assistant"
                 >
@@ -630,7 +631,7 @@ function App() {
         </div>
 
         {/* Right Panel - Sheet Staff Visualizer (expands to col-span-2 when staffExpanded) */}
-        <div className={`${staffExpanded ? 'xl:col-span-2' : 'xl:col-span-1'} flex flex-col gap-4 min-h-0 overflow-y-auto`}>
+        <div className={`${staffExpanded ? 'xl:col-span-2' : 'xl:col-span-1'} flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto`}>
           <div className="bg-slate-900 border border-slate-850 rounded-xl p-4 flex flex-col shadow-lg flex-1 min-h-[350px]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
               <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">
@@ -716,7 +717,7 @@ function App() {
       </main>
 
       {/* Interactive Piano (Always at bottom) */}
-      <footer className="bg-slate-900 border-t border-slate-800/80 p-4 mt-auto">
+      <footer className="bg-slate-900 border-t border-slate-800/80 p-3 sm:p-4 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-4 px-2">
             <div className="flex items-center gap-2">

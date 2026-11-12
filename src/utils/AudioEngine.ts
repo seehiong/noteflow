@@ -11,12 +11,23 @@ export class AudioEngine {
   private masterGainNode: GainNode;
   private reverbNode: ConvolverNode | null = null;
 
+  private setPlaybackAudioSession(): void {
+    // iOS routes Web Audio through its ambient session by default, which can
+    // silence it with the Ring/Silent switch enabled. The Audio Session API is
+    // optional, so older browsers keep their normal behavior.
+    const nav = navigator as Navigator & { audioSession?: { type: string } };
+    if (nav.audioSession) {
+      nav.audioSession.type = 'playback';
+    }
+  }
+
   // Synthesizer ADSR & Type settings
   private synthType: string = 'piano';
   private adsr = { attack: 0.01, decay: 0.15, sustain: 0.6, release: 0.25 };
   private reverbLevel: number = 0.3;
 
   constructor() {
+    this.setPlaybackAudioSession();
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.oscillators = new Map();
     this.gainNodes = new Map();
@@ -137,8 +148,8 @@ export class AudioEngine {
   }
 
   private playMetronomeClick(isDownbeat: boolean = false): void {
-    if (this.audioContext.state === 'suspended') {
-      this.audioContext.resume();
+    if (this.audioContext.state !== 'running') {
+      void this.resumeContext();
     }
 
     const oscillator = this.audioContext.createOscillator();
@@ -285,10 +296,11 @@ export class AudioEngine {
     velocity: number = 0.7,
     duration?: number,
     synthType?: string,
-    useReverb: boolean = true
+    useReverb: boolean = true,
+    voiceKey?: string
   ): void {
-    if (this.audioContext.state === 'suspended') {
-      this.audioContext.resume();
+    if (this.audioContext.state !== 'running') {
+      void this.resumeContext();
     }
 
     const activeSynth = synthType || this.synthType;
@@ -326,8 +338,11 @@ export class AudioEngine {
       return;
     }
 
-    // Stop existing note if playing
-    this.stopNote(note);
+    // Identify active voice key so multi-track playbacks don't prematurely cancel each other's notes
+    const activeKey = voiceKey || `${activeSynth}:${note}`;
+
+    // Stop existing note for this specific voice if playing
+    this.stopNote(activeKey);
 
     const frequency = this.getFrequency(note);
     const oscillator = this.createOscillator(frequency, activeSynth);
@@ -342,8 +357,8 @@ export class AudioEngine {
       flute: { attack: 0.07, decay: 0.12, sustain: 0.8, release: 0.18 },
       cello: { attack: 0.16, decay: 0.25, sustain: 0.8, release: 0.3 },
       violin: { attack: 0.12, decay: 0.2, sustain: 0.85, release: 0.3 },
-      sine: { attack: 0.01, decay: 0.15, sustain: 0.6, release: 0.25 },
-      triangle: { attack: 0.01, decay: 0.15, sustain: 0.6, release: 0.25 },
+      sine: { attack: 0.01, decay: 0.15, sustain: 0.8, release: 0.25 },
+      triangle: { attack: 0.01, decay: 0.15, sustain: 0.8, release: 0.25 },
       square: { attack: 0.01, decay: 0.15, sustain: 0.6, release: 0.25 },
       sawtooth: { attack: 0.01, decay: 0.15, sustain: 0.6, release: 0.25 },
       drum: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }
@@ -356,7 +371,13 @@ export class AudioEngine {
       : (instrumentAdsr[activeSynth] || this.adsr);
 
     // Convert MIDI-style velocity (0-1) to gain
-    const volume = Math.pow(velocity, 2) * 0.3; // Quadratic scaling for more natural feel
+    // Pure sine and triangle waves lack strong upper harmonics and sound quieter on consumer speakers, so boost their gain
+    const synthGainMultiplier = activeSynth === 'sine'
+      ? 2.1
+      : activeSynth === 'triangle'
+      ? 1.8
+      : 1.0;
+    const volume = Math.pow(velocity, 2) * 0.3 * synthGainMultiplier;
 
     const now = this.audioContext.currentTime;
     let lastNode: AudioNode = gainNode;
@@ -514,7 +535,7 @@ export class AudioEngine {
       filterDepth.connect(toneFilter.frequency);
 
       lfo.start(now);
-      this.lfos.set(note, lfo);
+      this.lfos.set(activeKey, lfo);
       if (duration) {
         lfo.stop(now + (duration / 1000) + adsr.release);
       }
@@ -533,7 +554,7 @@ export class AudioEngine {
       lfo.connect(lfoGain);
       lfoGain.connect(oscillator.frequency);
       lfo.start(now);
-      this.lfos.set(note, lfo);
+      this.lfos.set(activeKey, lfo);
       if (duration) {
         lfo.stop(now + (duration / 1000) + adsr.release);
       }
@@ -595,6 +616,18 @@ export class AudioEngine {
       scratchGain.connect(this.masterGainNode);
       scratchSource.start(now);
       scratchSource.stop(now + 0.08);
+    } else if (activeSynth === 'sine') {
+      oscillator.connect(gainNode);
+
+      // Add a subtle 2nd harmonic (octave) so pure sine is clearly audible on built-in laptop/mobile speakers
+      const overtone = this.audioContext.createOscillator();
+      overtone.type = 'sine';
+      overtone.frequency.setValueAtTime(frequency * 2, now);
+      const overtoneGain = this.audioContext.createGain();
+      overtoneGain.gain.setValueAtTime(0.2, now);
+      overtone.connect(overtoneGain);
+      overtoneGain.connect(gainNode);
+      oscs.push(overtone);
     } else {
       oscillator.connect(gainNode);
     }
@@ -658,27 +691,46 @@ export class AudioEngine {
       oscs.forEach(osc => osc.start(now));
     }
 
-    this.oscillators.set(note, oscs);
-    this.gainNodes.set(note, gainNode);
-    this.noteReleases.set(note, Math.max(0.001, adsr.release));
+    this.oscillators.set(activeKey, oscs);
+    this.gainNodes.set(activeKey, gainNode);
+    this.noteReleases.set(activeKey, Math.max(0.001, adsr.release));
   }
 
-  stopNote(note: string): void {
-    const oscs = this.oscillators.get(note);
-    const gainNode = this.gainNodes.get(note);
-    const lfo = this.lfos.get(note);
+  stopNote(identifier: string): void {
+    // If exact match (e.g. "piano:C4" or "C4") exists, stop it
+    if (this.oscillators.has(identifier)) {
+      this.stopVoice(identifier);
+      return;
+    }
+
+    // Otherwise, identifier may be just a pitch name like "C4" released from a keyboard:
+    // stop all matching voices that end with ":<pitch>" or equal "<pitch>"
+    const keysToStop: string[] = [];
+    this.oscillators.forEach((_, key) => {
+      if (key === identifier || key.endsWith(`:${identifier}`)) {
+        keysToStop.push(key);
+      }
+    });
+
+    keysToStop.forEach(key => this.stopVoice(key));
+  }
+
+  private stopVoice(key: string): void {
+    const oscs = this.oscillators.get(key);
+    const gainNode = this.gainNodes.get(key);
+    const lfo = this.lfos.get(key);
 
     if (lfo) {
       try {
         const now = this.audioContext.currentTime;
         lfo.stop(now + 0.35);
       } catch (e) {}
-      this.lfos.delete(note);
+      this.lfos.delete(key);
     }
 
     if (oscs && gainNode) {
       const now = this.audioContext.currentTime;
-      const releaseDur = this.noteReleases.get(note) ?? Math.max(0.001, this.adsr.release);
+      const releaseDur = this.noteReleases.get(key) ?? Math.max(0.001, this.adsr.release);
 
       gainNode.gain.cancelScheduledValues(now);
 
@@ -692,10 +744,10 @@ export class AudioEngine {
         oscs.forEach(osc => osc.stop(now + 0.1));
       }
 
-      this.oscillators.delete(note);
-      this.gainNodes.delete(note);
+      this.oscillators.delete(key);
+      this.gainNodes.delete(key);
     }
-    this.noteReleases.delete(note);
+    this.noteReleases.delete(key);
   }
 
   // Synthesizer Settings API
@@ -712,8 +764,15 @@ export class AudioEngine {
   }
 
   async resumeContext(): Promise<void> {
-    if (this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
+    // iOS Safari can move a context to "interrupted" when audio output is
+    // paused by the OS. Resume every non-running state from the current gesture.
+    if (this.audioContext.state !== 'running') {
+      try {
+        this.setPlaybackAudioSession();
+        await this.audioContext.resume();
+      } catch (error) {
+        console.warn('Could not resume audio context:', error);
+      }
     }
   }
 

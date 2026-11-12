@@ -51,11 +51,13 @@ export const Piano: React.FC<PianoProps> = ({ activeNotes, onNotePlay, onNoteSto
     return normalizedTimingFeedback[normalizeNote(note)];
   };
 
-  const handleMouseDown = (note: string, octave: number) => {
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>, note: string, octave: number) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
     onNotePlay(`${note}${octave}`);
   };
 
-  const handleMouseUp = (note: string, octave: number) => {
+  const handlePointerUp = (note: string, octave: number) => {
     onNoteStop(`${note}${octave}`);
   };
 
@@ -63,8 +65,9 @@ export const Piano: React.FC<PianoProps> = ({ activeNotes, onNotePlay, onNoteSto
   const octaveWidth = 7 * 52; // 48px width + 4px margin
 
   return (
-    <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-6 rounded-2xl shadow-2xl">
-      <div className="relative flex justify-center">
+    <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-3 sm:p-6 rounded-2xl shadow-2xl">
+      <div className="overflow-x-auto overscroll-x-contain">
+      <div className="relative flex justify-center min-w-max">
         <div className="relative inline-flex">
           {/* White Keys */}
           <div className="flex">
@@ -86,9 +89,10 @@ export const Piano: React.FC<PianoProps> = ({ activeNotes, onNotePlay, onNoteSto
                         ${!feedback && isActive ? 'bg-purple-400 border-purple-500 scale-95 shadow-purple-500/50' : ''}
                         ${!feedback && !isActive ? 'bg-white hover:bg-gray-50 active:scale-95' : ''}
                       `}
-                      onMouseDown={() => handleMouseDown(note, octave)}
-                      onMouseUp={() => handleMouseUp(note, octave)}
-                      onMouseLeave={() => handleMouseUp(note, octave)}
+                      onPointerDown={(event) => handlePointerDown(event, note, octave)}
+                      onPointerUp={() => handlePointerUp(note, octave)}
+                      onPointerCancel={() => handlePointerUp(note, octave)}
+                      style={{ touchAction: 'none' }}
                     >
                       <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600">
                         {note}{octave}
@@ -123,10 +127,10 @@ export const Piano: React.FC<PianoProps> = ({ activeNotes, onNotePlay, onNoteSto
                         ${!feedback && isActive ? 'bg-purple-600 border-purple-700 scale-95 shadow-purple-600/50' : ''}
                         ${!feedback && !isActive ? 'bg-gray-900 hover:bg-gray-800 active:scale-95' : ''}
                       `}
-                      style={{ left: `${absolutePosition}px`, zIndex: 10 }}
-                      onMouseDown={() => handleMouseDown(note, octave)}
-                      onMouseUp={() => handleMouseUp(note, octave)}
-                      onMouseLeave={() => handleMouseUp(note, octave)}
+                      style={{ left: `${absolutePosition}px`, zIndex: 10, touchAction: 'none' }}
+                      onPointerDown={(event) => handlePointerDown(event, note, octave)}
+                      onPointerUp={() => handlePointerUp(note, octave)}
+                      onPointerCancel={() => handlePointerUp(note, octave)}
                     >
                       <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 text-xs font-medium text-white text-center leading-tight">
                         <div>{sharpNoteFull}</div>
@@ -139,6 +143,7 @@ export const Piano: React.FC<PianoProps> = ({ activeNotes, onNotePlay, onNoteSto
             ))}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

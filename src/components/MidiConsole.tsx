@@ -1,3 +1,5 @@
+//src/components/MidiConsole.tsx
+
 import React, { useEffect, useRef } from 'react';
 import { Terminal, Trash2, Wifi, WifiOff, ChevronUp, ChevronDown } from 'lucide-react';
 
